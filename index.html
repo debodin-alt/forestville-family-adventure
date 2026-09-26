@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#6da477" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="description" content="A cozy family adventure around Forestville and Sydney." />
+    <meta name="description" content="A cozy family adventure around Forestville and Manly." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles/game.css" />
     <title>Forestville Family Adventure</title>
@@ -15,61 +16,91 @@
     <main id="app" aria-label="Forestville Family Adventure">
       <section id="start-screen" class="panel-screen">
         <div class="title-card">
-          <div class="eyebrow">A tiny family adventure</div>
+          <div class="eyebrow">A tiny family adventure · Northern Beaches</div>
           <h1>Forestville<br />Family Adventure</h1>
-          <div class="family-row" aria-label="Family characters">
-            <span>🐻</span><span>🪿</span><span>🐰</span><span>🐆</span>
-          </div>
-          <p>Explore Forestville, find Finn’s lucky feathers, then head to Sydney Harbour for a family photo.</p>
+          <div id="family-row" class="family-row" aria-label="Dan the bear, Finn the goose, Jessia the rabbit and Jarency the cheetah"></div>
+          <p>Help Finn find five lucky feathers around Forestville, then catch the bus to Manly for a family day out.</p>
           <button id="start-button" class="primary-button" type="button">Start adventure</button>
-          <p class="tiny">Original fan-made family project. No Nintendo assets or code.</p>
+          <p id="start-note" class="start-note"></p>
+          <p class="tiny">An original fan-made family project. All art and sound are made in code.</p>
         </div>
       </section>
 
       <section id="game-shell" aria-hidden="true">
         <div id="game"></div>
+        <div id="light" aria-hidden="true"></div>
 
         <div id="hud">
           <div id="top-hud">
-            <div class="glass-card quest-card">
-              <div id="location-label" class="location-label">Forestville</div>
+            <div class="glass-card quest-card" aria-live="polite">
+              <div id="chapter-label" class="chapter-label">Chapter 1</div>
               <div id="quest-label" class="quest-label">Find Finn’s lucky feathers</div>
-              <div id="feather-count" class="feather-count">0 / 5 feathers</div>
+              <div id="feather-pips" class="pips" aria-hidden="true"></div>
             </div>
-            <div id="character-switcher" class="glass-card character-switcher" aria-label="Switch character">
-              <button class="character-button active" type="button" data-character="dan" aria-label="Play as Dan">🐻<span>Dan</span></button>
-              <button class="character-button" type="button" data-character="finn" aria-label="Play as Finn">🪿<span>Finn</span></button>
-              <button class="character-button" type="button" data-character="jessia" aria-label="Play as Jessia">🐰<span>Jessia</span></button>
-              <button class="character-button" type="button" data-character="jarency" aria-label="Play as Jarency">🐆<span>Jarency</span></button>
+            <div class="top-right">
+              <div id="character-switcher" class="glass-card character-switcher" aria-label="Switch character"></div>
+              <div class="mini-row">
+                <button id="mute-button" class="round-button" type="button" aria-label="Sound on. Turn sound off">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+                <button id="menu-button" class="round-button" type="button" aria-label="Menu">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div id="hint" class="hint hidden">Press A to interact</div>
+          <div id="area-title" class="area-title" aria-live="polite"></div>
+          <div id="toast" class="toast" role="status"></div>
 
-          <div id="joystick" class="joystick" aria-label="Movement control">
-            <div id="joystick-knob" class="joystick-knob"></div>
+          <div id="prompt" class="prompt"><span id="prompt-key" class="prompt-key">E</span><span id="prompt-text"></span></div>
+
+          <div id="joy-zone" class="joy-zone" aria-label="Movement: drag to walk">
+            <div id="joy-base" class="joy-base"><div id="joy-knob" class="joy-knob"></div></div>
           </div>
-          <button id="action-button" class="action-button" type="button" aria-label="Interact">A</button>
-          <button id="reset-button" class="reset-button" type="button" aria-label="Reset saved game">↻</button>
+          <button id="action-button" class="action-button" type="button" aria-label="Interact">
+            <span class="action-glyph">A</span><span id="action-label" class="action-label"></span>
+          </button>
         </div>
 
-        <div id="dialogue" class="dialogue hidden" role="dialog" aria-live="polite">
-          <div id="dialogue-avatar" class="dialogue-avatar">🪿</div>
+        <div id="dialogue" class="dialogue" role="dialog" aria-live="polite">
+          <div id="dialogue-portrait" class="dialogue-portrait"></div>
           <div class="dialogue-copy">
-            <div id="dialogue-name" class="dialogue-name">Finn</div>
+            <div id="dialogue-name" class="dialogue-name"></div>
             <div id="dialogue-text" class="dialogue-text"></div>
           </div>
-          <button id="dialogue-next" type="button">Continue</button>
+          <div class="dialogue-more" aria-hidden="true"></div>
         </div>
 
-        <div id="ending" class="panel-screen hidden">
-          <div class="title-card ending-card">
-            <div class="eyebrow">Quest complete</div>
-            <h2>Family photo<br />at the Harbour</h2>
-            <div class="family-row big"><span>🐻</span><span>🪿</span><span>🐰</span><span>🐆</span></div>
-            <p>You found all five feathers and made it from Forestville to the city together.</p>
-            <button id="keep-playing" class="primary-button" type="button">Keep exploring</button>
+        <div id="menu" class="modal" hidden>
+          <div class="title-card menu-card" role="dialog" aria-label="Menu">
+            <div class="eyebrow">Paused</div>
+            <h2>Menu</h2>
+            <div class="menu-actions">
+              <button id="mute-toggle" class="secondary-button" type="button" aria-pressed="true">Sound: on</button>
+              <button id="reset-button" class="secondary-button danger" type="button">Start a new adventure</button>
+              <div id="reset-confirm" class="reset-confirm" hidden>
+                <p>This clears your feathers and progress. Are you sure?</p>
+                <div class="row"><button id="reset-yes" class="secondary-button danger" type="button">Yes, start over</button><button id="reset-no" class="secondary-button" type="button">Keep playing</button></div>
+              </div>
+            </div>
+            <p class="controls-help"><b>Keyboard:</b> WASD or arrows to walk · E or Space to interact · 1–4 to swap family · M to mute</p>
+            <button id="close-menu" class="primary-button" type="button">Back to the game</button>
           </div>
+        </div>
+
+        <div id="ending" class="panel-screen" hidden>
+          <div class="title-card ending-card">
+            <div id="ending-eyebrow" class="eyebrow">Chapter complete</div>
+            <h2 id="ending-title">Family Day Out</h2>
+            <div id="ending-row" class="family-row big"></div>
+            <p id="ending-text"></p>
+            <button id="ending-button" class="primary-button" type="button">Keep exploring</button>
+          </div>
+        </div>
+
+        <div id="load-error" class="panel-screen" hidden>
+          <div class="title-card"><h2>Couldn’t load the game engine</h2><p>Check your internet connection and reload the page.</p></div>
         </div>
       </section>
     </main>

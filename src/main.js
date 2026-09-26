@@ -1,53 +1,102 @@
-const SAVE_KEY='forestville-family-v1';
-const CHARS={
-  dan:{name:'Dan',emoji:'🐻',type:'bear',color:0x8f694d,speed:215},
-  finn:{name:'Finn',emoji:'🪿',type:'goose',color:0xf2f0e4,speed:230},
-  jessia:{name:'Jessia',emoji:'🐰',type:'rabbit',color:0xe8dfd7,speed:225},
-  jarency:{name:'Jarency',emoji:'🐆',type:'cheetah',color:0xd9a33d,speed:235}
-};
-const fresh=()=>({v:1,who:'dan',x:690,y:780,feathers:[],done:false});
-function load(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));return s?.v===1?{...fresh(),...s}:fresh()}catch{return fresh()}}
-function store(s){localStorage.setItem(SAVE_KEY,JSON.stringify(s))}
+// Boot: title screen, save loading, Phaser setup, HUD wiring.
 
-const $=id=>document.getElementById(id);
-const ui={start:$('start-screen'),shell:$('game-shell'),quest:$('quest-label'),count:$('feather-count'),loc:$('location-label'),hint:$('hint'),joy:$('joystick'),knob:$('joystick-knob'),act:$('action-button'),dialog:$('dialogue'),avatar:$('dialogue-avatar'),name:$('dialogue-name'),text:$('dialogue-text'),next:$('dialogue-next'),ending:$('ending')};
-const move={x:0,y:0,act:false};
-let scene=null, dialogLines=[];
-function questUI(s){ui.count.textContent=`${s.feathers.length} / 5 feathers`;ui.quest.textContent=s.done?'Adventure complete — keep exploring':s.feathers.length===5?'Go to the Harbour photo spot':`Find Finn’s lucky feathers (${s.feathers.length}/5)`}
-function say(id,lines){const c=CHARS[id]||{name:'Forestville',emoji:'🌿'};dialogLines=Array.isArray(lines)?[...lines]:[lines];ui.avatar.textContent=c.emoji;ui.name.textContent=c.name;ui.dialog.classList.remove('hidden');nextLine()}
-function nextLine(){const line=dialogLines.shift();if(line){ui.text.textContent=line}else{ui.dialog.classList.add('hidden')}}
-ui.next.onclick=nextLine;ui.dialog.onclick=e=>{if(e.target!==ui.next)nextLine()};
+import { state } from './state.js';
+import { loadSave, writeSave, resetSave } from './systems/save.js';
+import { audio } from './systems/audio.js';
+import { initInput, input } from './systems/input.js';
+import { hud, portrait } from './ui/hud.js';
+import { WorldScene } from './scenes/WorldScene.js';
+import { FAMILY } from './data/characters.js';
 
-(function joystick(){let pid=null;const r=34,update=e=>{const b=ui.joy.getBoundingClientRect(),cx=b.left+b.width/2,cy=b.top+b.height/2;let dx=e.clientX-cx,dy=e.clientY-cy,l=Math.hypot(dx,dy)||1,m=Math.min(r,l);dx=dx/l*m;dy=dy/l*m;move.x=dx/r;move.y=dy/r;ui.knob.style.transform=`translate(${dx}px,${dy}px)`};ui.joy.onpointerdown=e=>{pid=e.pointerId;ui.joy.setPointerCapture(pid);update(e)};ui.joy.onpointermove=e=>{if(e.pointerId===pid)update(e)};const end=e=>{if(e.pointerId!==pid)return;pid=null;move.x=move.y=0;ui.knob.style.transform='translate(0,0)'};ui.joy.onpointerup=end;ui.joy.onpointercancel=end})();
-ui.act.onpointerdown=()=>move.act=true;
-document.querySelectorAll('.character-button').forEach(b=>b.onclick=()=>scene?.switchTo(b.dataset.character));
-$('reset-button').onclick=()=>{if(confirm('Reset the adventure and start again?')){localStorage.removeItem(SAVE_KEY);location.reload()}};
-$('keep-playing').onclick=()=>ui.ending.classList.add('hidden');
+const $ = id => document.getElementById(id);
+const QA = new URLSearchParams(location.search).has('qa');
+window.__forestville = state; // handy for debugging from the console
 
-class ForestvilleScene extends Phaser.Scene{
-  constructor(){super('forestville');this.s=load();this.npcs=new Map();this.feathers=new Map();this.near=null}
-  create(){scene=this;this.physics.world.setBounds(0,0,2500,1600);this.cameras.main.setBounds(0,0,2500,1600);this.makeTextures();this.drawWorld();this.makeObstacles();this.makeFamily();this.makeFeathers();this.makePlayer(this.s.who,this.s.x,this.s.y);this.makeZones();this.keys=this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,E');questUI(this.s);this.syncCharUI();this.time.delayedCall(500,()=>{if(!this.s.feathers.length&&!this.s.done)say('finn',['Emergency! I lost five lucky feathers around Forestville.','Check the shops, pond, school and bush track — then we can head to Sydney.'])})}
-  makeTextures(){Object.entries(CHARS).forEach(([id,c])=>this.charTexture(id,c));const g=this.make.graphics({add:false});g.fillStyle(0xffffff).fillEllipse(15,18,14,28).fillTriangle(10,8,4,2,11,14).fillTriangle(18,7,24,2,18,14).generateTexture('feather',30,36);g.destroy()}
-  charTexture(id,c){const g=this.make.graphics({add:false}),d=0x44382e;g.fillStyle(0x274632,.15).fillEllipse(36,70,42,12);g.fillStyle(c.color);if(c.type==='goose'){g.fillEllipse(35,50,36,38).fillRoundedRect(30,20,12,34,6).fillCircle(36,18,12);g.fillStyle(0xe6a62d).fillTriangle(44,18,59,23,44,26);g.fillStyle(d).fillCircle(40,15,2)}else{g.fillRoundedRect(20,35,32,33,14).fillCircle(36,28,21);if(c.type==='bear')g.fillCircle(21,14,9).fillCircle(51,14,9);if(c.type==='rabbit')g.fillRoundedRect(18,0,11,29,6).fillRoundedRect(43,0,11,29,6);if(c.type==='cheetah'){g.fillTriangle(18,18,18,2,29,14).fillTriangle(54,18,54,2,43,14);g.fillStyle(0x6f4d24);[[25,23],[47,24],[30,43],[44,46],[25,55],[49,56]].forEach(p=>g.fillCircle(...p,2.3))}g.fillStyle(d).fillCircle(29,28,2).fillCircle(43,28,2).fillCircle(36,35,2)}g.generateTexture(`char-${id}`,72,80);g.destroy()}
-  drawWorld(){const g=this.add.graphics();g.fillStyle(0x8fbb82).fillRect(0,0,1650,1600);g.fillStyle(0x6eb1c7).fillRect(1650,0,850,700);g.fillStyle(0x7da771).fillRect(1650,700,850,900);g.fillStyle(0xd8c89f).fillRoundedRect(100,690,1450,130,50).fillRoundedRect(690,100,130,1220,50).fillRoundedRect(690,1120,760,110,45);g.fillStyle(0x5f9065).fillRoundedRect(70,80,530,470,80).fillRoundedRect(90,1030,500,440,90);g.fillStyle(0x77b8bd).fillEllipse(1210,360,330,220);this.building(g,480,500,300,180,0xc88162,0x6f4d3e);this.building(g,920,700,310,170,0xd3a65a,0x7a5c3b);this.building(g,840,1080,360,210,0x8da9bd,0x586a7b);this.building(g,210,650,230,150,0xb79b77,0x6f5c46);g.fillStyle(0xc9b58e).fillRoundedRect(1710,570,720,190,55);g.lineStyle(13,0x53656b).lineBetween(1780,470,2320,470);g.beginPath();g.arc(2050,470,220,Math.PI,0,false);g.strokePath();g.fillStyle(0xf1eee1).fillTriangle(2260,570,2345,450,2360,575).fillTriangle(2215,570,2290,490,2310,575);const labels=[[520,545,'HOME'],[970,748,'VILLAGE SHOPS'],[900,1145,'FORESTVILLE SCHOOL'],[245,700,'CAFÉ'],[1080,240,'DUCK POND'],[180,180,'GARIGAL TRACK'],[1840,850,'SYDNEY HARBOUR LOOKOUT']];labels.forEach(([x,y,t])=>this.add.text(x,y,t,{fontFamily:'system-ui',fontSize:'18px',fontStyle:'bold',color:'#385040',stroke:'#fff8e8',strokeThickness:5}).setDepth(3));[[130,130],[250,180],[400,150],[520,330],[160,430],[120,1100],[260,1200],[480,1350],[1440,220],[1440,520],[1510,1100],[1810,900],[2350,920],[1810,1350],[2320,1350]].forEach((p,i)=>this.tree(...p,.9+(i%3)*.08));for(let i=0;i<35;i++){const x=100+(i*173)%1450,y=120+(i*307)%1360;if(x>1100&&x<1320&&y>240&&y<470)continue;this.add.circle(x,y,3,[0xf7d971,0xf5b8c4,0xece7e0][i%3]).setDepth(1)}}
-  building(g,x,y,w,h,wall,roof){g.fillStyle(0x35533a,.15).fillRoundedRect(x+10,y+12,w,h,18);g.fillStyle(wall).fillRoundedRect(x,y,w,h,18);g.fillStyle(roof).fillTriangle(x-15,y+18,x+w/2,y-70,x+w+15,y+18);g.fillStyle(0xf7e8c5).fillRoundedRect(x+w*.43,y+h*.48,w*.14,h*.52,6);g.fillStyle(0x9bc5c9).fillRoundedRect(x+w*.12,y+h*.32,w*.18,h*.24,6).fillRoundedRect(x+w*.7,y+h*.32,w*.18,h*.24,6)}
-  tree(x,y,s){this.add.rectangle(x,y+32*s,16*s,54*s,0x75573c).setDepth(2);const cs=[this.add.circle(x-16*s,y,28*s,0x477954),this.add.circle(x+14*s,y-9*s,32*s,0x5c8f60),this.add.circle(x+4*s,y+14*s,30*s,0x699a66)];cs.forEach(c=>c.setDepth(3));this.tweens.add({targets:cs,x:'+=2',duration:2200+x%500,yoyo:true,repeat:-1,ease:'Sine.easeInOut'})}
-  makeObstacles(){this.obs=this.physics.add.staticGroup();[[630,565,320,175],[1075,765,330,165],[1020,1180,380,205],[325,715,250,145],[1210,360,300,190]].forEach(([x,y,w,h])=>{const o=this.add.rectangle(x,y,w,h,0,0);this.physics.add.existing(o,true);this.obs.add(o)})}
-  makeFamily(){const pos={dan:[560,880],finn:[1260,540],jessia:[960,980],jarency:[850,620]};Object.entries(pos).forEach(([id,p])=>{const n=this.physics.add.sprite(...p,`char-${id}`).setDepth(8).setImmovable(true);n.body.setCircle(20,16,40);this.npcs.set(id,n);this.tweens.add({targets:n,y:'+=4',duration:1200+Object.keys(pos).indexOf(id)*120,yoyo:true,repeat:-1,ease:'Sine.easeInOut'})})}
-  makePlayer(id,x,y){this.player?.destroy();this.player=this.physics.add.sprite(x,y,`char-${id}`).setDepth(10).setCollideWorldBounds(true);this.player.body.setCircle(19,17,40);this.physics.add.collider(this.player,this.obs);this.s.who=id;this.npcs.forEach((n,nid)=>{n.setVisible(nid!==id);n.body.enable=nid!==id});this.cameras.main.startFollow(this.player,true,.09,.09);this.cameras.main.setZoom(innerHeight>innerWidth?1.05:1.12);this.syncCharUI()}
-  switchTo(id){if(!CHARS[id]||id===this.s.who||!ui.dialog.classList.contains('hidden'))return;const old=this.s.who,p={x:this.player.x,y:this.player.y},target=this.npcs.get(id),np=target?.visible?{x:target.x,y:target.y}:p;const oldNpc=this.npcs.get(old);oldNpc?.setPosition(p.x,p.y);if(oldNpc){oldNpc.setVisible(true);oldNpc.body.enable=true}this.makePlayer(id,np.x,np.y);this.persist();say(id,`${CHARS[id].name} is now leading the adventure.`)}
-  makeFeathers(){[[420,360],[1080,930],[1360,620],[520,1280],[250,910]].forEach((p,i)=>{const id=`f${i+1}`;if(this.s.feathers.includes(id))return;const f=this.physics.add.sprite(...p,'feather').setDepth(7);this.feathers.set(id,f);this.tweens.add({targets:f,y:'-=8',angle:i%2?7:-7,duration:900+i*90,yoyo:true,repeat:-1,ease:'Sine.easeInOut'})})}
-  makeZones(){this.bus=this.zone(1555,760,'bus');this.back=this.zone(1770,1120,'back');this.photo=this.zone(2170,910,'photo');this.add.text(1510,790,'🚌',{fontSize:'38px'}).setDepth(6);this.add.text(1730,1130,'🚌',{fontSize:'38px'}).setDepth(6);const p=this.add.text(2130,900,'📸',{fontSize:'44px'}).setDepth(6);this.tweens.add({targets:p,scale:1.08,duration:900,yoyo:true,repeat:-1})}
-  zone(x,y,type){const z=this.add.zone(x,y,130,130);this.physics.add.existing(z,true);z.setData('type',type);return z}
-  update(t){if(!this.player)return;if(!ui.dialog.classList.contains('hidden')){this.player.setVelocity(0);if(this.action())nextLine();move.act=false;return}let x=move.x,y=move.y;if(this.keys.LEFT.isDown||this.keys.A.isDown)x--;if(this.keys.RIGHT.isDown||this.keys.D.isDown)x++;if(this.keys.UP.isDown||this.keys.W.isDown)y--;if(this.keys.DOWN.isDown||this.keys.S.isDown)y++;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l}const sp=CHARS[this.s.who].speed;this.player.setVelocity(x*sp,y*sp);if(Math.abs(x)>.05)this.player.setFlipX(x<0);this.player.setAngle(Math.sin(t/(l>.08?95:420))*(l>.08?2.5:1.2));this.collect();this.findNear();if(this.action()&&this.near)this.interact(this.near);move.act=false;this.location();if(!this.last||t-this.last>1500){this.persist();this.last=t}}
-  action(){return Phaser.Input.Keyboard.JustDown(this.keys.SPACE)||Phaser.Input.Keyboard.JustDown(this.keys.E)||move.act}
-  collect(){this.feathers.forEach((f,id)=>{if(Phaser.Math.Distance.Between(this.player.x,this.player.y,f.x,f.y)<48){this.s.feathers.push(id);this.feathers.delete(id);this.tweens.add({targets:f,scale:1.8,alpha:0,duration:240,onComplete:()=>f.destroy()});questUI(this.s);this.persist();const n=this.s.feathers.length;say('finn',n===5?['That’s all five! Legendary feather recovery.','Catch the bus and meet everyone at the Harbour camera marker.']:`Feather ${n} of 5! Keep looking.`)}})}
-  findNear(){let best=92,n=null;this.npcs.forEach((o,id)=>{if(!o.visible)return;const d=Phaser.Math.Distance.Between(this.player.x,this.player.y,o.x,o.y);if(d<best){best=d;n={type:'npc',id}}});[this.bus,this.back,this.photo].forEach(z=>{const d=Phaser.Math.Distance.Between(this.player.x,this.player.y,z.x,z.y);if(d<best){best=d;n={type:z.getData('type')}}});this.near=n;ui.hint.classList.toggle('hidden',!n);if(n)ui.hint.textContent=n.type==='npc'?`A · Talk to ${CHARS[n.id].name}`:n.type==='photo'?'A · Take family photo':'A · Catch the bus'}
-  interact(n){if(n.type==='npc'){const lines={dan:['Coffee first, adventure second. Actually… adventure first today.','Keep an eye out along the bush track.'],finn:this.s.feathers.length<5?[`I’m counting ${this.s.feathers.length}. We need ${5-this.s.feathers.length} more!`,'This was absolutely a planned quest.']:['Five out of five. Perfect goose logistics.','Harbour photo time!'],jessia:['I checked near the school and the pond.','After this, I vote for a swim.'],jarency:['Everyone together, no rushing. We can make a day of it.','Once the feathers are safe, let’s head into the city.']}[n.id];say(n.id,lines)}else if(n.type==='bus'){this.player.setPosition(1810,1160);this.cameras.main.flash(300,255,244,212);say(this.s.who,'Bus ride complete. Sydney Harbour is just ahead.')}else if(n.type==='back'){this.player.setPosition(1480,820);this.cameras.main.flash(300,255,244,212)}else if(n.type==='photo'){if(this.s.feathers.length<5)say('finn',`We’re still missing ${5-this.s.feathers.length} feather${5-this.s.feathers.length===1?'':'s'}!`);else{this.s.done=true;questUI(this.s);this.persist();this.cameras.main.flash(420,255,255,255);this.time.delayedCall(450,()=>ui.ending.classList.remove('hidden'))}}}
-  syncCharUI(){document.querySelectorAll('.character-button').forEach(b=>b.classList.toggle('active',b.dataset.character===this.s.who))}
-  location(){const{x,y}=this.player;ui.loc.textContent=x>1650?'Sydney Harbour':x<620&&y<560?'Garigal bush track':x>1040&&y<560?'Duck pond':x>820&&y>1020?'Forestville School':x>850&&y>620&&y<940?'Forestville village':x>450&&x<800&&y>430&&y<730?'Home':'Forestville'}
-  persist(){this.s.x=Math.round(this.player.x);this.s.y=Math.round(this.player.y);store(this.s)}
+// ---- load save ----
+const loaded = loadSave();
+state.save = loaded.save;
+state.notice = loaded.notice;
+audio.setMuted(state.save.settings.muted);
+
+// ---- title screen ----
+const row = $('family-row');
+FAMILY.forEach(id => row.appendChild(portrait(id, 120)));
+const hasProgress = state.save.quests.intro || state.save.quests.ch1.feathers.length > 0;
+$('start-button').textContent = hasProgress ? 'Continue adventure' : 'Start adventure';
+if (hasProgress) $('start-note').textContent = `${state.save.quests.ch1.feathers.length} of 5 feathers found${state.save.quests.ch2.done ? ' · adventure complete' : ''}`;
+
+function setMuted(m) {
+  state.save.settings.muted = m;
+  audio.setMuted(m);
+  hud.setMuted(m);
+  writeSave(state.save);
 }
 
-function boot(){if(scene)return;ui.start.classList.add('hidden');ui.shell.removeAttribute('aria-hidden');new Phaser.Game({type:Phaser.AUTO,parent:'game',backgroundColor:'#8fbb82',physics:{default:'arcade',arcade:{gravity:{y:0},debug:false}},scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},render:{antialias:true},scene:[ForestvilleScene]})}
-$('start-button').onclick=boot;addEventListener('keydown',e=>{if(!scene&&(e.key==='Enter'||e.key===' '))boot()});
+hud.init({
+  onSwitch: id => state.scene?.switchTo(id),
+  onMute: () => setMuted(!state.save.settings.muted),
+  onReset: () => {
+    state.save = resetSave(state.save.settings);
+    location.reload();
+  },
+});
+hud.setMuted(state.save.settings.muted);
+
+initInput({ zone: $('joy-zone'), base: $('joy-base'), knob: $('joy-knob'), actionBtn: $('action-button') });
+input.onKey = (k) => {
+  if (!state.scene) return;
+  const i = ['1', '2', '3', '4'].indexOf(k);
+  if (i >= 0) state.scene.switchTo(FAMILY[i]);
+  if (k === 'm') setMuted(!state.save.settings.muted);
+  if (k === 'escape') hud.openMenu(!hud.menuOpen);
+};
+
+function resizeGame() {
+  if (!state.game) return;
+  const w = window.innerWidth, h = window.innerHeight;
+  state.game.scale.resize(Math.round(w * state.dpr), Math.round(h * state.dpr));
+}
+
+function boot() {
+  if (state.game) return;
+  audio.unlock();
+  input.action = false;
+  $('start-screen').hidden = true;
+  $('game-shell').removeAttribute('aria-hidden');
+  if (!window.Phaser) {
+    $('load-error').hidden = false;
+    return;
+  }
+  state.game = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'game',
+    backgroundColor: '#9cc27c',
+    width: Math.round(window.innerWidth * state.dpr),
+    height: Math.round(window.innerHeight * state.dpr),
+    scale: { mode: Phaser.Scale.NONE },
+    render: { antialias: true, roundPixels: false, powerPreference: 'high-performance' },
+    // ?qa uses raw frame deltas so slow headless test browsers keep real time
+    fps: QA ? { target: 60, min: 1, smoothStep: false } : { target: 60 },
+    input: { keyboard: false, mouse: false, touch: false, gamepad: false },
+    audio: { noAudio: true },
+    scene: [WorldScene],
+    banner: false,
+  });
+  addEventListener('resize', resizeGame);
+  addEventListener('orientationchange', () => setTimeout(resizeGame, 250));
+  // audio needs a gesture on iOS; re-arm on any tap
+  addEventListener('pointerdown', () => audio.unlock(), { passive: true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) state.scene?.persist(true); });
+}
+
+// Painting the world takes a moment on phones: show feedback first.
+function startSoon() {
+  if (state.game || state.starting) return;
+  state.starting = true;
+  audio.unlock();
+  const b = $('start-button');
+  b.textContent = 'Setting the scene…'; b.disabled = true;
+  requestAnimationFrame(() => setTimeout(boot, 30));
+}
+$('start-button').addEventListener('click', startSoon);
+addEventListener('keydown', e => { if (!state.game && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); startSoon(); } });

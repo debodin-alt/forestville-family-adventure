@@ -3,8 +3,8 @@
   "short_name": "Forestville",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#dbe9d6",
+  "background_color": "#9cc27c",
   "theme_color": "#6da477",
   "orientation": "any",
-  "description": "A cozy family adventure around Forestville and Sydney."
+  "description": "A cozy family adventure around Forestville and Manly on Sydney’s Northern Beaches."
 }
