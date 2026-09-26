@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#6da477" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="A cozy family adventure around Forestville and Sydney." />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles/game.css" />
+    <title>Forestville Family Adventure</title>
+  </head>
+  <body>
+    <main id="app" aria-label="Forestville Family Adventure">
+      <section id="start-screen" class="panel-screen">
+        <div class="title-card">
+          <div class="eyebrow">A tiny family adventure</div>
+          <h1>Forestville<br />Family Adventure</h1>
+          <div class="family-row" aria-label="Family characters">
+            <span>🐻</span><span>🪿</span><span>🐰</span><span>🐆</span>
+          </div>
+          <p>Explore Forestville, find Finn’s lucky feathers, then head to Sydney Harbour for a family photo.</p>
+          <button id="start-button" class="primary-button" type="button">Start adventure</button>
+          <p class="tiny">Original fan-made family project. No Nintendo assets or code.</p>
+        </div>
+      </section>
+
+      <section id="game-shell" aria-hidden="true">
+        <div id="game"></div>
+
+        <div id="hud">
+          <div id="top-hud">
+            <div class="glass-card quest-card">
+              <div id="location-label" class="location-label">Forestville</div>
+              <div id="quest-label" class="quest-label">Find Finn’s lucky feathers</div>
+              <div id="feather-count" class="feather-count">0 / 5 feathers</div>
+            </div>
+            <div id="character-switcher" class="glass-card character-switcher" aria-label="Switch character">
+              <button class="character-button active" type="button" data-character="dan" aria-label="Play as Dan">🐻<span>Dan</span></button>
+              <button class="character-button" type="button" data-character="finn" aria-label="Play as Finn">🪿<span>Finn</span></button>
+              <button class="character-button" type="button" data-character="jessia" aria-label="Play as Jessia">🐰<span>Jessia</span></button>
+              <button class="character-button" type="button" data-character="jarency" aria-label="Play as Jarency">🐆<span>Jarency</span></button>
+            </div>
+          </div>
+
+          <div id="hint" class="hint hidden">Press A to interact</div>
+
+          <div id="joystick" class="joystick" aria-label="Movement control">
+            <div id="joystick-knob" class="joystick-knob"></div>
+          </div>
+          <button id="action-button" class="action-button" type="button" aria-label="Interact">A</button>
+          <button id="reset-button" class="reset-button" type="button" aria-label="Reset saved game">↻</button>
+        </div>
+
+        <div id="dialogue" class="dialogue hidden" role="dialog" aria-live="polite">
+          <div id="dialogue-avatar" class="dialogue-avatar">🪿</div>
+          <div class="dialogue-copy">
+            <div id="dialogue-name" class="dialogue-name">Finn</div>
+            <div id="dialogue-text" class="dialogue-text"></div>
+          </div>
+          <button id="dialogue-next" type="button">Continue</button>
+        </div>
+
+        <div id="ending" class="panel-screen hidden">
+          <div class="title-card ending-card">
+            <div class="eyebrow">Quest complete</div>
+            <h2>Family photo<br />at the Harbour</h2>
+            <div class="family-row big"><span>🐻</span><span>🪿</span><span>🐰</span><span>🐆</span></div>
+            <p>You found all five feathers and made it from Forestville to the city together.</p>
+            <button id="keep-playing" class="primary-button" type="button">Keep exploring</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
