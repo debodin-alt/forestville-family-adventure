@@ -1,0 +1,10 @@
+{
+  "name": "Forestville Family Adventure",
+  "short_name": "Forestville",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#dbe9d6",
+  "theme_color": "#6da477",
+  "orientation": "any",
+  "description": "A cozy family adventure around Forestville and Sydney."
+}
