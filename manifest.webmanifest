@@ -6,5 +6,19 @@
   "background_color": "#9cc27c",
   "theme_color": "#6da477",
   "orientation": "any",
-  "description": "A cozy family adventure around Forestville and Manly on Sydney’s Northern Beaches."
+  "description": "A cozy family adventure around Forestville and Manly on Sydney’s Northern Beaches.",
+  "icons": [
+    {
+      "src": "./assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": "./"
 }

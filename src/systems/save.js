@@ -18,9 +18,11 @@ export function freshSave() {
       intro: false,
       ch1: { feathers: [], kooka: 0, bev: 0, duckMoved: false, ledge: false, sandDug: false, done: false },
       ch2: { unlocked: false, arrived: false, duck: false, lookout: false, photo: false, done: false },
+      ch3: { unlocked: false, gear: false, spotted: [], done: false },
+      ch4: { unlocked: false, arrived: false, busk: false, fish: false, photo: false, done: false },
     },
-    world: { areasSeen: [], talked: {} },
-    settings: { muted: false },
+    world: { areasSeen: [], talked: {}, items: { rod: false, snorkel: false }, fish: {} },
+    settings: { muted: false, music: true },
     meta: { created: now, updated: now, migratedFrom: null },
   };
 }
@@ -35,7 +37,7 @@ export function normalize(raw) {
   if (!isObj(raw)) return s;
   const p = isObj(raw.player) ? raw.player : {};
   s.player.who = FAMILY.includes(p.who) ? p.who : 'dan';
-  s.player.map = p.map === 'manly' ? 'manly' : 'forestville';
+  s.player.map = ['manly', 'harbour'].includes(p.map) ? p.map : 'forestville';
   s.player.x = num(p.x, null); s.player.y = num(p.y, null);
   const q = isObj(raw.quests) ? raw.quests : {};
   s.quests.intro = bool(q.intro, false);
@@ -47,11 +49,24 @@ export function normalize(raw) {
   const c2 = isObj(q.ch2) ? q.ch2 : {};
   for (const k of ['unlocked', 'arrived', 'duck', 'lookout', 'photo', 'done']) s.quests.ch2[k] = bool(c2[k], false);
   if (s.quests.ch1.feathers.length === 5) { s.quests.ch1.done = true; s.quests.ch2.unlocked = true; }
+  const c3 = isObj(q.ch3) ? q.ch3 : {};
+  for (const k of ['unlocked', 'gear', 'done']) s.quests.ch3[k] = bool(c3[k], false);
+  s.quests.ch3.spotted = Array.isArray(c3.spotted) ? [...new Set(c3.spotted.filter(x => typeof x === 'string'))].slice(0, 20) : [];
+  const c4 = isObj(q.ch4) ? q.ch4 : {};
+  for (const k of ['unlocked', 'arrived', 'busk', 'fish', 'photo', 'done']) s.quests.ch4[k] = bool(c4[k], false);
+  if (s.quests.ch2.done) s.quests.ch3.unlocked = true;
+  if (s.quests.ch3.done) s.quests.ch4.unlocked = true;
   if (!s.quests.ch2.unlocked && s.player.map === 'manly') s.player.map = 'forestville';
+  if (!s.quests.ch4.unlocked && s.player.map === 'harbour') s.player.map = 'manly';
   const w = isObj(raw.world) ? raw.world : {};
   s.world.areasSeen = Array.isArray(w.areasSeen) ? w.areasSeen.filter(a => typeof a === 'string').slice(0, 50) : [];
   s.world.talked = isObj(w.talked) ? Object.fromEntries(Object.entries(w.talked).filter(([k, v]) => typeof v === 'number').slice(0, 100)) : {};
   s.settings.muted = bool(raw.settings?.muted, false);
+  s.settings.music = bool(raw.settings?.music, true);
+  const it = isObj(w.items) ? w.items : {};
+  s.world.items = { rod: bool(it.rod, false), snorkel: bool(it.snorkel, false) };
+  s.world.fish = {};
+  if (isObj(w.fish)) for (const [k, v] of Object.entries(w.fish)) if (isObj(v) && typeof k === 'string' && k.length < 30) s.world.fish[k] = { n: Math.max(1, num(v.n, 1)), best: num(v.best, 0) };
   if (isObj(raw.meta)) { s.meta.created = num(raw.meta.created, s.meta.created); s.meta.migratedFrom = raw.meta.migratedFrom ?? null; }
   return s;
 }

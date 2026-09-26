@@ -628,3 +628,113 @@ export function marker() {
   });
   return { canvas, ax: 12, ay: 18, collide: null };
 }
+
+export function shed() {
+  // little colorbond garden shed where the fishing rod lives
+  const canvas = paint(110, 110, ctx => {
+    groundShadow(ctx, 58, 102, 50, 9);
+    rrect(ctx, 10, 40, 90, 62, 3, '#6f8f73');
+    ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1;
+    for (let x = 14; x < 100; x += 6) { ctx.beginPath(); ctx.moveTo(x, 42); ctx.lineTo(x, 100); ctx.stroke(); }
+    ctx.fillStyle = '#5b7a60'; ctx.beginPath(); ctx.moveTo(4, 44); ctx.lineTo(55, 16); ctx.lineTo(106, 44); ctx.closePath(); ctx.fill();
+    rrect(ctx, 38, 56, 34, 46, 2, '#4d6a52');
+    ctx.fillStyle = '#c9c4b6'; ctx.fillRect(66, 76, 3, 8);
+    // rod leaning on the wall
+    ctx.strokeStyle = '#7a5a3a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(86, 102); ctx.lineTo(100, 20); ctx.stroke();
+    ellipse(ctx, 89, 90, 4, 4, '#2b2b2e');
+  });
+  return { canvas, ax: 55, ay: 102, collide: { c: 0, rect: [-46, -58, 92, 56] } };
+}
+
+export function bobber() {
+  const canvas = paint(16, 18, ctx => {
+    ellipse(ctx, 8, 10, 6, 6, '#fbfaf5');
+    ctx.save(); ctx.beginPath(); ctx.ellipse(8, 10, 6, 6, 0, Math.PI, 0); ctx.clip(); ctx.fillStyle = '#e0453b'; ctx.fillRect(0, 0, 16, 10); ctx.restore();
+    ctx.fillStyle = '#2b2b2e'; ctx.fillRect(7.3, 1, 1.4, 4);
+  });
+  return { canvas, ax: 8, ay: 14, collide: null };
+}
+
+export function ferry() {
+  // green-and-cream harbour ferry, side view
+  const canvas = paint(320, 150, ctx => {
+    ctx.fillStyle = 'rgba(20,60,80,.25)'; ctx.beginPath(); ctx.ellipse(160, 138, 150, 10, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1f6b47'; ctx.beginPath(); ctx.moveTo(10, 96); ctx.lineTo(310, 96); ctx.lineTo(292, 134); ctx.lineTo(28, 134); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#f3ead7'; ctx.fillRect(12, 90, 296, 8);
+    rrect(ctx, 40, 50, 240, 42, 6, '#f3ead7');
+    for (let i = 0; i < 10; i++) rrect(ctx, 50 + i * 22, 58, 16, 20, 3, '#7fb0c2');
+    rrect(ctx, 110, 20, 100, 32, 6, '#f3ead7');
+    for (let i = 0; i < 4; i++) rrect(ctx, 118 + i * 23, 27, 17, 15, 3, '#7fb0c2');
+    rrect(ctx, 150, 4, 18, 18, 3, '#1f6b47'); ctx.fillStyle = '#f2c230'; ctx.fillRect(150, 8, 18, 4);
+    ctx.fillStyle = '#f3ead7'; ctx.font = '800 12px ui-rounded, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('NARRABEEN', 160, 124);
+  });
+  return { canvas, ax: 160, ay: 134, collide: null };
+}
+
+export function sailsHouse() {
+  // a fictionalised harbour-side performing arts house: sandstone podium and white sail shells
+  const W = 560, H = 340;
+  const canvas = paint(W, H, ctx => {
+    groundShadow(ctx, 290, 322, 260, 18, 0.2);
+    rrect(ctx, 20, 250, 520, 72, 6, '#d9b98a');
+    ctx.fillStyle = 'rgba(120,80,40,.25)'; for (let x = 24; x < 540; x += 22) ctx.fillRect(x, 254, 2, 66);
+    const shell = (x, base, w, h, lean) => {
+      ctx.fillStyle = '#f4f1e8';
+      ctx.beginPath(); ctx.moveTo(x - w / 2, base); ctx.quadraticCurveTo(x - w * 0.45 + lean * 0.3, base - h * 0.7, x + lean, base - h); ctx.quadraticCurveTo(x + w * 0.5 + lean * 0.2, base - h * 0.45, x + w / 2, base); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(170,165,150,.45)';
+      ctx.beginPath(); ctx.moveTo(x + lean, base - h); ctx.quadraticCurveTo(x + w * 0.5 + lean * 0.2, base - h * 0.45, x + w / 2, base); ctx.lineTo(x + w * 0.1, base); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(190,185,170,.6)'; ctx.lineWidth = 1;
+      for (let k = 1; k < 6; k++) { ctx.beginPath(); ctx.moveTo(x - w / 2 + k * w / 6, base); ctx.quadraticCurveTo(x - w * 0.2 + k * 4, base - h * 0.5, x + lean, base - h); ctx.stroke(); }
+      ctx.fillStyle = '#c9a36d'; ctx.beginPath(); ctx.moveTo(x - w / 2 + 6, base); ctx.quadraticCurveTo(x, base - h * 0.28, x + w / 2 - 6, base); ctx.closePath(); ctx.fill();
+    };
+    shell(110, 256, 120, 150, 30); shell(190, 256, 130, 190, 34); shell(270, 256, 110, 130, 24);
+    shell(360, 256, 130, 200, 36); shell(440, 256, 120, 160, 30); shell(500, 256, 80, 100, 20);
+  });
+  return { canvas, ax: 280, ay: 322, collide: { c: 0, rect: [-262, -90, 524, 88] } };
+}
+
+export function fig(scale = 1) {
+  // Moreton Bay fig: huge dark canopy and buttress roots
+  const r = rng(1234);
+  const W = 230 * scale, H = 210 * scale, cx = W / 2, base = H - 14 * scale;
+  const canvas = paint(W, H, ctx => {
+    const s = scale;
+    groundShadow(ctx, cx + 10, base, 100 * s, 24 * s, 0.28);
+    ctx.fillStyle = '#8a7a66';
+    ctx.beginPath(); ctx.moveTo(cx - 34 * s, base); ctx.quadraticCurveTo(cx - 12 * s, base - 30 * s, cx - 10 * s, base - 80 * s); ctx.lineTo(cx + 12 * s, base - 80 * s); ctx.quadraticCurveTo(cx + 14 * s, base - 30 * s, cx + 38 * s, base); ctx.closePath(); ctx.fill();
+    for (const k of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + k * 8 * s, base - 20 * s); ctx.quadraticCurveTo(cx + k * 40 * s, base - 6 * s, cx + k * 56 * s, base + 2); ctx.lineTo(cx + k * 46 * s, base + 2); ctx.closePath(); ctx.fill(); }
+    for (let i = 0; i < 9; i++) {
+      const x = cx + (r() - 0.5) * 170 * s, y = base - (95 + r() * 60) * s, rr = (40 + r() * 20) * s;
+      blob(ctx, x + 6, y + 8, rr, rr * 0.7, r, 10, 0.2); ctx.fillStyle = 'rgba(20,40,20,.25)'; ctx.fill();
+      blob(ctx, x, y, rr, rr * 0.7, r, 10, 0.2); ctx.fillStyle = ['#2f5a34', '#3b6b3d', '#2a4f2e'][i % 3]; ctx.fill();
+      blob(ctx, x - rr * 0.25, y - rr * 0.25, rr * 0.5, rr * 0.35, r, 8, 0.25); ctx.fillStyle = '#4f8250'; ctx.fill();
+    }
+  });
+  return { canvas, ax: cx, ay: base, collide: { c: 0, y: -4 * scale, rx: 30 * scale, ry: 10 * scale } };
+}
+
+export function sandstoneBuilding(label = 'CUSTOMS HOUSE') {
+  const w = 360, h = 150, W = w + 20, H = h + 60;
+  const canvas = paint(W, H, ctx => {
+    groundShadow(ctx, W / 2 + 8, 50 + h, w * 0.55, 12, 0.22);
+    rrect(ctx, 10, 50, w, h, 3, '#dcb98a');
+    rrect(ctx, 4, 34, w + 12, 20, 3, '#caa574');
+    ctx.fillStyle = '#b8935f'; ctx.beginPath(); ctx.moveTo(W / 2 - 70, 34); ctx.lineTo(W / 2, 4); ctx.lineTo(W / 2 + 70, 34); ctx.closePath(); ctx.fill();
+    ellipse(ctx, W / 2, 24, 9, 9, '#f7f0e0'); ctx.strokeStyle = '#3b3530'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(W / 2, 24); ctx.lineTo(W / 2, 18); ctx.moveTo(W / 2, 24); ctx.lineTo(W / 2 + 5, 24); ctx.stroke();
+    for (let i = 0; i < 8; i++) { ctx.fillStyle = '#efdcb8'; ctx.fillRect(22 + i * 44, 60, 10, h - 14); }
+    for (let i = 0; i < 7; i++) { windowPane(ctx, 40 + i * 44, 76, 20, 30, '#efdcb8'); windowPane(ctx, 40 + i * 44, 130, 20, 30, '#efdcb8'); }
+    ctx.fillStyle = '#5b4a36'; ctx.font = font(12); ctx.textAlign = 'center'; ctx.fillText(label, W / 2, 48);
+  });
+  return { canvas, ax: W / 2, ay: 50 + h, collide: { c: 0, rect: [-w / 2, -h + 30, w, h - 34] } };
+}
+
+export function busker() {
+  // open guitar case with a few coins
+  const canvas = paint(60, 36, ctx => {
+    groundShadow(ctx, 30, 30, 26, 4);
+    ellipse(ctx, 22, 18, 16, 12, '#2b2b2e'); rrect(ctx, 30, 12, 26, 12, 5, '#2b2b2e');
+    ellipse(ctx, 22, 18, 13, 9, '#7a2f3a'); rrect(ctx, 32, 14, 22, 8, 4, '#7a2f3a');
+    for (const [x, y] of [[18, 16], [24, 20], [28, 15], [40, 18]]) ellipse(ctx, x, y, 2.4, 2.4, '#e9c46a');
+  });
+  return { canvas, ax: 30, ay: 30, collide: null };
+}

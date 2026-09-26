@@ -3,8 +3,15 @@
 import * as PROPS from '../art/props.js';
 import { ART } from '../art/critters.js';
 import { makeCanvas } from '../utils/canvas.js';
+import { ART_VERSION, groundChunks, groundKeys, propArgs, propKey } from '../art/assets.js';
 import { forestville } from '../data/maps/forestville.js';
 import { manly, MSPOTS } from '../data/maps/manly.js';
+import { harbour, HSPOTS } from '../data/maps/harbour.js';
+import { SEA_LIFE } from '../data/fish.js';
+import { Fishing } from '../systems/fishing.js';
+import { music } from '../systems/music.js';
+import { daylight } from '../systems/daylight.js';
+import { snapshot, addPhoto } from '../systems/photos.js';
 import { FAMILY, CHARACTERS } from '../data/characters.js';
 import { Critter } from '../entities/Critter.js';
 import { Collision } from '../systems/collision.js';
@@ -12,14 +19,13 @@ import { Ambient } from '../systems/ambient.js';
 import { audio } from '../systems/audio.js';
 import { readMove, takeAction, haptic, isTouch } from '../systems/input.js';
 import { writeSave } from '../systems/save.js';
-import { objective, buildInteractables, onEnterMap, onFeatherCollected, talkTo, onMove } from '../systems/quests.js';
+import { objective, buildInteractables, onEnterMap, onFeatherCollected, talkTo, onMove, onSpot, onCatch } from '../systems/quests.js';
 import { hud } from '../ui/hud.js';
 import { state } from '../state.js';
 
-const MAPS = { forestville, manly };
-const SCALABLE = new Set(['gum', 'roundTree', 'shrub', 'fern', 'grassTree', 'rock', 'norfolkPine']);
+const MAPS = { forestville, manly, harbour };
+const THEME = { forestville: 'forestville', manly: 'manly', harbour: 'harbour' };
 const TALL = new Set(['gum', 'roundTree', 'norfolkPine', 'house', 'shop', 'school', 'grassTree', 'lifeguardTower']);
-const CHUNK = 1024;
 
 export class WorldScene extends Phaser.Scene {
   constructor() { super('world'); }
@@ -31,15 +37,41 @@ export class WorldScene extends Phaser.Scene {
     this.busy = false;
   }
 
+  // Load pre-baked art for this map if it matches the current art version (see tools/bake.mjs).
+  preload() {
+    if (state.noBake) return;
+    const map = MAPS[this.mapId];
+    const queue = m => {
+      if (!m || m.version !== ART_VERSION) { state.noBake = true; return; }
+      state.bakeMeta = state.bakeMeta || {};
+      for (const f of m.files) {
+        if (f.maps && !f.maps.includes(map.id)) continue;
+        state.bakeMeta[f.key] = f.meta || null;
+        if (!this.textures.exists(f.key)) this.load.image(f.key, `assets/baked/${f.file}`);
+      }
+    };
+    if (state.bakeManifest) queue(state.bakeManifest);
+    else {
+      this.load.json('bake-manifest', `assets/baked/manifest.json?v=${ART_VERSION}`);
+      this.load.once('filecomplete-json-bake-manifest', (key, type, data) => { state.bakeManifest = data; queue(data); });
+    }
+    this.load.on('loaderror', f => { if (f.key === 'bake-manifest') state.noBake = true; });
+  }
+
   create() {
     const map = this.map = MAPS[this.mapId];
     state.scene = this;
     this.cameras.main.setBackgroundColor(map.bg);
     // free the previous map's ground (safe now: its images were destroyed with the old scene)
     for (const k of this.textures.getTextureKeys()) if (/-g-\d+-\d+$/.test(k) && !k.startsWith(`${map.id}-g-`)) this.textures.remove(k);
+    const t0 = performance.now();
     this.paintGround(map);
+    const t1 = performance.now();
     const propShapes = this.placeProps(map);
-    this.collision = new Collision(map.w, map.h, [...map.colliders(), ...propShapes]);
+    const t2 = performance.now();
+    state.timings = { ground: Math.round(t1 - t0), props: Math.round(t2 - t1) };
+    this.colOpts = { canSwim: () => !!this.save.world.items.snorkel };
+    this.collision = new Collision(map.w, map.h, [...map.colliders(this.colOpts), ...propShapes]);
 
     // player + family + neighbours
     const who = this.save.player.who;
@@ -54,7 +86,12 @@ export class WorldScene extends Phaser.Scene {
     this.npcs = {};
     for (const n of map.npcs) { const c = new Critter(this, n.id, n.x, n.y); c.wander = n.wander; this.npcs[n.id] = c; }
 
+    const t3 = performance.now();
     this.ambient = new Ambient(this, map);
+    state.timings.critters = Math.round(t3 - t2); state.timings.ambient = Math.round(performance.now() - t3);
+    this.fishing = new Fishing(this);
+    this.makeLampGlow();
+    music.play(THEME[map.id]);
     this.pickups = {};
     this.api = this.makeApi();
     this.interactables = buildInteractables(this.api);
@@ -78,6 +115,15 @@ export class WorldScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.scale.off('resize', this.applyZoom, this));
     cam.fadeIn(600, 255, 244, 220);
 
+    this.makeWaterFx();
+    // characters are solid: you bump into family and neighbours instead of walking through them
+    this.bumpCheck = (x, y, ox, oy) => {
+      for (const c of [...Object.values(this.family), ...Object.values(this.npcs)]) {
+        const d = Math.hypot(c.x - x, (c.y - y) * 1.7), was = Math.hypot(c.x - ox, (c.y - oy) * 1.7);
+        if (d < 24 && d < was) return true;
+      }
+      return false;
+    };
     this.vel = { x: 0, y: 0 };
     this.stepDist = 0; this.lastSave = 0; this.areaId = null; this.areaCheck = 0; this.focus = null; this.fadeCheck = 0;
     this.moved = false;
@@ -91,37 +137,33 @@ export class WorldScene extends Phaser.Scene {
 
   // ---------- setup helpers ----------
   paintGround(map) {
-    const nx = Math.ceil(map.w / CHUNK), ny = Math.ceil(map.h / CHUNK);
-    const k0 = `${map.id}-g-0-0`;
-    if (!this.textures.exists(k0)) {
-      const [big, ctx] = makeCanvas(map.w, map.h);
-      map.paintGround(ctx);
-      for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
-        const w = Math.min(CHUNK, map.w - i * CHUNK), h = Math.min(CHUNK, map.h - j * CHUNK);
-        const [c, cx] = makeCanvas(w, h);
-        cx.drawImage(big, i * CHUNK, j * CHUNK, w, h, 0, 0, w, h);
-        this.textures.addCanvas(`${map.id}-g-${i}-${j}`, c);
-      }
-      big.width = big.height = 1; // release memory quickly (iOS)
+    const keys = groundKeys(map);
+    if (!keys.every(k => this.textures.exists(k))) {
+      for (const k of keys) if (this.textures.exists(k)) this.textures.remove(k);
+      for (const { key, canvas } of groundChunks(map)) this.textures.addCanvas(key, canvas);
     }
-    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) this.add.image(i * CHUNK, j * CHUNK, `${map.id}-g-${i}-${j}`).setOrigin(0).setDepth(-10000);
+    for (const k of keys) {
+      const [, i, j] = /-g-(\d+)-(\d+)$/.exec(k);
+      this.add.image(+i * 1024, +j * 1024, k).setOrigin(0).setDepth(-10000);
+    }
   }
 
   placeProps(map) {
     const shapes = [];
-    this.tall = [];
+    this.tall = []; this.lamps = [];
     for (const p of map.buildProps()) {
-      const args = [...p.args];
-      if (SCALABLE.has(p.kind) && typeof args[args.length - 1] === 'number' && args.length > 1) args[args.length - 1] = Math.round(args[args.length - 1] / 0.15) * 0.15;
-      const key = `prop-${p.kind}-${JSON.stringify(args)}`;
-      let meta = this.textures.exists(key) ? this.textures.get(key).customData.meta : null;
+      const args = propArgs(p);
+      const key = propKey(p.kind, args);
+      let meta = this.textures.exists(key) ? (this.textures.get(key).customData.meta || state.bakeMeta?.[key]) : null;
       if (!meta) {
+        if (this.textures.exists(key)) this.textures.remove(key);
         const res = PROPS[p.kind](...args);
         const tex = this.textures.addCanvas(key, res.canvas);
         meta = { ax: res.ax, ay: res.ay, collide: res.collide, flat: res.flat, w: res.canvas.width / ART, h: res.canvas.height / ART };
         tex.customData.meta = meta;
       }
       const img = this.add.image(p.x - meta.ax, p.y - meta.ay, key).setOrigin(0).setScale(1 / ART).setDepth(meta.flat ? -5000 + p.y * 0.01 : p.y);
+      if (p.kind === 'lamp') (this.lamps || (this.lamps = [])).push([p.x, p.y]);
       if (TALL.has(p.kind)) this.tall.push({ img, x: p.x - meta.ax, y: p.y - meta.ay, w: meta.w, h: meta.h, base: p.y });
       const c = meta.collide;
       if (c) {
@@ -137,7 +179,7 @@ export class WorldScene extends Phaser.Scene {
     const s = this.save.player;
     const fallback = this.arriving ? (map.arriveAt || map.spawn) : (map.family[who] || map.spawn);
     if (!this.arriving && s.map === map.id && Number.isFinite(s.x) && Number.isFinite(s.y)) {
-      const c = new Collision(map.w, map.h, map.colliders());
+      const c = new Collision(map.w, map.h, map.colliders(this.colOpts));
       if (!c.blocked(s.x, s.y)) return [s.x, s.y];
     }
     return fallback;
@@ -206,6 +248,10 @@ export class WorldScene extends Phaser.Scene {
       chime: () => audio.item(),
       celebrate: small => { if (small) audio.item(); else { audio.quest(); haptic.success(); } },
       photo: () => scene.photo(),
+      photo4: () => scene.photo4(),
+      creak: () => audio.creak(),
+      horn: () => audio.horn(),
+      busk: () => scene.busk(),
     };
   }
 
@@ -301,8 +347,9 @@ export class WorldScene extends Phaser.Scene {
     this.player.setPosition(...spots[this.player.id]); this.player.dir = 'down';
     for (const [id, c] of Object.entries(this.family)) { c.setPosition(...spots[id]); c.home = { x: c.x, y: c.y }; c.dir = 'down'; c.jump(); }
     this.player.jump();
-    q.photo = true; q.done = true;
+    q.photo = true; q.done = true; this.save.quests.ch3.unlocked = true;
     this.persist(true); this.refresh();
+    this.time.delayedCall(350, () => this.capture('Family photo · Shelly Beach lookout'));
     this.time.delayedCall(900, () => {
       audio.quest(); haptic.success();
       hud.showEnding({
@@ -313,6 +360,73 @@ export class WorldScene extends Phaser.Scene {
         onButton: () => { this.busy = false; },
       });
     });
+  }
+
+  photo4() {
+    const q = this.save.quests.ch4;
+    const [sx, sy] = HSPOTS.steps;
+    this.busy = true;
+    hud.flash(); audio.camera();
+    const spots = { dan: [sx - 70, sy], finn: [sx - 25, sy + 12], jessia: [sx + 25, sy + 12], jarency: [sx + 70, sy] };
+    this.player.setPosition(...spots[this.player.id]); this.player.dir = 'down';
+    for (const [id, c] of Object.entries(this.family)) { c.setPosition(...spots[id]); c.home = { x: c.x, y: c.y }; c.dir = 'down'; c.jump(); }
+    this.player.jump();
+    this.camTarget.x = sx; this.camTarget.y = sy - 80;
+    q.photo = true; q.done = true;
+    this.persist(true); this.refresh();
+    this.time.delayedCall(350, () => this.capture('Family photo · Harbour steps'));
+    this.time.delayedCall(900, () => {
+      audio.quest(); haptic.success();
+      hud.showEnding({
+        eyebrow: 'Chapter 4 complete · The End (for now)',
+        title: 'Harbour Day',
+        text: 'Feathers found, a duck at the beach, a groper friend, a busking debut and a fish off the wharf. Same time next weekend?',
+        button: 'Keep exploring',
+        onButton: () => { this.busy = false; },
+      });
+    });
+  }
+
+  busk() {
+    // a few strummed chords from Jess's guitar
+    [[196, 247, 294], [165, 196, 247], [131, 165, 196], [147, 185, 220]].forEach((ch, i) => ch.forEach((f, k) => this.time.delayedCall(i * 420 + k * 25, () => audio.tone && audio.ok && audio.tone({ f: f * 2, type: 'triangle', dur: 0.6, vol: 0.05 }))));
+    this.time.delayedCall(1700, () => { audio.sparkle(); hud.toast('+ $4.50 and one very confident gull'); });
+  }
+
+  capture(caption) {
+    snapshot(this.game, data => { if (data && addPhoto(data, caption)) hud.toast('Photo saved to the album'); });
+  }
+
+  takePhoto() {
+    if (this.busy) return;
+    hud.flash(); audio.camera(); haptic.light();
+    const area = this.map.areas.find(a => a.id === this.areaId);
+    const name = area ? area.name.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()) : 'Out and about';
+    this.capture(`${name} · ${daylight.name}`);
+  }
+
+  afterCatch(water) { onCatch(this.api, water); }
+
+  spot(id) {
+    const fresh = onSpot(this.api, id);
+    audio.spot(); haptic.light();
+    hud.catchCard({ spec: SEA_LIFE[id], spotted: true, isNew: fresh, count: this.save.quests.ch3.spotted.length });
+    if (fresh) this.emphasize(this.ambient.creatures[id].x, this.ambient.creatures[id].y);
+  }
+
+  makeLampGlow() {
+    const key = 'lampglow';
+    if (!this.textures.exists(key)) {
+      const [c, ctx] = makeCanvas(128, 128);
+      const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(255,225,150,.9)'); g.addColorStop(1, 'rgba(255,225,150,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128); this.textures.addCanvas(key, c);
+    }
+    this.glows = [];
+    for (const [x, y] of this.lamps) {
+      this.glows.push(this.add.image(x, y - 100, key).setScale(0.7).setDepth(9e5 - 2).setBlendMode('ADD').setAlpha(0));
+      this.glows.push(this.add.image(x, y, key).setScale(1.3, 0.55).setDepth(-3000).setBlendMode('ADD').setAlpha(0));
+    }
+    this.glowT = 0;
   }
 
   switchTo(id) {
@@ -327,7 +441,7 @@ export class WorldScene extends Phaser.Scene {
     this.persist(true);
     hud.setActive(id);
     hud.toast(`Now playing as ${CHARACTERS[id].name}`);
-    audio.item();
+    audio.pop(); if (id === 'finn') this.time.delayedCall(120, () => audio.honk());
   }
 
   // ---------- per-frame ----------
@@ -356,6 +470,18 @@ export class WorldScene extends Phaser.Scene {
       const dist = Math.hypot(c.x - x, (c.y - y) * 1.3);
       if (dist < 70 && dist < bd) { bd = dist; best = { id: `talk-${id}`, verb: 'talk', label: CHARACTERS[id].name, x: c.x, y: c.y, markerH: 96, talk: id, critter: c }; }
     }
+    // sea life while snorkelling
+    if (this.player.water === 2 && this.ambient.creatures) {
+      for (const cr of Object.values(this.ambient.creatures)) {
+        const dist = Math.hypot(cr.x - x, cr.y - y);
+        if (dist < 110 && dist < bd) { bd = dist; best = { id: `spot-${cr.id}`, verb: 'spot', label: this.save.quests.ch3.spotted.includes(cr.id) ? SEA_LIFE[cr.id].name : 'Something’s down there', x: cr.x, y: cr.y, markerH: 30, spot: cr.id }; }
+      }
+    }
+    // fishing: only when nothing else is in reach
+    if (!best) {
+      const f = this.fishing.spot();
+      if (f) best = { id: `fish-${f.water}`, verb: 'fish', label: f.water === 'reserve' ? 'Marine reserve' : 'Cast a line', x: f.x, y: f.y, markerH: 26, fish: f };
+    }
     return best;
   }
 
@@ -369,17 +495,26 @@ export class WorldScene extends Phaser.Scene {
     const dt = Math.min(delta, 50);
     hud.tick(dt);
     audio.tick(time);
-    const locked = hud.talking || hud.menuOpen || hud.endingOpen || this.busy;
+    daylight.tick(dt);
+    this.glowT -= dt;
+    if (this.glowT <= 0) { this.glowT = 900; const a = daylight.dark * 0.85; for (const g of this.glows) g.setAlpha(a); }
+    if (this.talkingWas !== hud.talking) { this.talkingWas = hud.talking; music.setDuck(hud.talking); }
+    const fishing = this.fishing.active;
+    const locked = hud.talking || hud.menuOpen || hud.endingOpen || hud.albumOpen || this.busy || fishing;
+    hud.el.app.classList.toggle('fishing', fishing);
 
     // NPCs
-    const blocked = (x, y) => this.collision.blocked(x, y);
+    const blocked = (x, y) => this.collision.blocked(x, y) || Math.hypot(this.player.x - x, (this.player.y - y) * 1.7) < 24;
     for (const c of [...Object.values(this.family), ...Object.values(this.npcs)]) {
       const [vx, vy] = c.brain(dt, locked ? null : this.player, blocked);
       c.update(dt, vx, vy, time);
     }
 
     let mx = 0, my = 0;
-    if (locked) {
+    if (fishing) {
+      this.fishing.update(dt);
+      if (takeAction()) { if (hud.talking) hud.advance(); else this.fishing.press(); }
+    } else if (locked) {
       if (takeAction()) hud.advance();
     } else {
       [mx, my] = readMove();
@@ -392,16 +527,22 @@ export class WorldScene extends Phaser.Scene {
     if (Math.abs(this.vel.y) < 1 && !my) this.vel.y = 0;
     const p = this.player;
     const ox = p.x, oy = p.y;
-    const [nx, ny] = this.collision.move(p.x, p.y, this.vel.x * dt / 1000, this.vel.y * dt / 1000);
+    const [nx, ny] = this.collision.move(p.x, p.y, this.vel.x * dt / 1000, this.vel.y * dt / 1000, this.bumpCheck);
     p.x = nx; p.y = ny;
     const moved = Math.hypot(nx - ox, ny - oy);
     p.update(dt, moved > 0.2 ? (nx - ox) / dt * 1000 : 0, moved > 0.2 ? (ny - oy) / dt * 1000 : 0, time);
     if (moved > 0.2) {
       this.moved = true;
       this.stepDist += moved;
-      if (this.stepDist > 34) { this.stepDist = 0; audio.step(this.map.surfaceAt(p.x, p.y)); }
+      if (this.stepDist > 34) {
+        this.stepDist = 0;
+        const surf = this.map.surfaceAt(p.x, p.y);
+        audio.step(surf === 'deep' ? 'swim' : surf);
+        if (p.water) this.splash(p.x, p.y, p.water === 2 ? 3 : 4);
+      }
       onMove(this.api, p.x, p.y);
     }
+    this.updateWater(dt, moved > 0.2);
 
     // camera target (eases toward focus points)
     const f = this.focus && time < this.focus.until ? this.focus : null;
@@ -424,12 +565,80 @@ export class WorldScene extends Phaser.Scene {
     if (!locked && takeAction() && near) {
       audio.tap();
       if (near.talk) { const c = near.critter; c.faceToward(p.x, p.y); p.faceToward(c.x, c.y); talkTo(this.api, near.talk); }
+      else if (near.fish) this.fishing.start(near.fish);
+      else if (near.spot) this.spot(near.spot);
       else { p.faceToward(near.x, near.y); near.run(); }
     }
 
     this.ambient.update(dt, time, p, this.cameras.main);
 
     if (this.moved && time - this.lastSave > 5000) { this.moved = false; this.persist(); }
+  }
+
+  // ---------- water: wading, swimming, ripples, splashes ----------
+  makeWaterFx() {
+    const tex = (key, w, h, fn) => { if (this.textures.exists(key)) return; const [c, ctx] = makeCanvas(w, h); fn(ctx); this.textures.addCanvas(key, c); };
+    tex('ripple', 72, 28, ctx => { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(36, 14, 32, 11, 0, 0, 7); ctx.stroke(); });
+    tex('waterline', 56, 22, ctx => {
+      ctx.fillStyle = 'rgba(90,165,185,.62)'; ctx.beginPath(); ctx.ellipse(28, 11, 26, 9, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(28, 11, 25, 8.5, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+    });
+    tex('drop', 8, 8, ctx => { ctx.fillStyle = 'rgba(235,250,255,.95)'; ctx.beginPath(); ctx.arc(4, 4, 3, 0, 7); ctx.fill(); });
+    tex('snorkel', 40 * ART, 30 * ART, ctx => {
+      ctx.scale(ART, ART);
+      ctx.fillStyle = '#2fb3a6'; ctx.beginPath(); ctx.roundRect(4, 12, 32, 5, 2.5); ctx.fill();
+      ctx.fillStyle = 'rgba(170,225,240,.85)'; ctx.strokeStyle = '#1f6f8a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(9, 8, 22, 12, 5); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#f2c230'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(33, 16); ctx.lineTo(34, 2); ctx.stroke();
+    });
+    this.waterline = this.add.image(0, 0, 'waterline').setVisible(false);
+    this.mask = this.add.image(0, 0, 'snorkel').setScale(1 / ART).setVisible(false);
+    this.rippleT = 0; this.bubbleT = 0;
+  }
+
+  splash(x, y, n = 6, big = false) {
+    for (let i = 0; i < n; i++) {
+      const d = this.add.image(x + (Math.random() - 0.5) * 16, y - 4, 'drop').setDepth(y + 2).setScale(big ? 1.2 : 0.8);
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, v = (big ? 46 : 26) + Math.random() * 20;
+      this.tweens.add({ targets: d, x: d.x + Math.cos(a) * v, y: { value: d.y + Math.sin(a) * v * 0.6 + 10, ease: 'Quad.easeIn' }, alpha: 0, duration: 420 + Math.random() * 200, onComplete: () => d.destroy() });
+    }
+  }
+
+  ripple(x, y, scale = 1) {
+    const r = this.add.image(x, y, 'ripple').setDepth(-3500).setScale(0.35 * scale).setAlpha(0.85);
+    this.tweens.add({ targets: r, scale: 1.3 * scale, alpha: 0, duration: 1100, ease: 'Quad.easeOut', onComplete: () => r.destroy() });
+  }
+
+  updateWater(dt, moving) {
+    const p = this.player;
+    const surf = this.map.surfaceAt(p.x, p.y);
+    const lvl = surf === 'deep' ? 2 : surf === 'water' ? 1 : 0;
+    if (lvl !== p.water) {
+      if (lvl > p.water) { this.splash(p.x, p.y, 10, true); audio.splash(lvl === 2); }
+      else if (lvl === 0) audio.step('water');
+      p.setWater(lvl);
+    }
+    for (const c of Object.values(this.family)) { const s2 = this.map.surfaceAt(c.x, c.y); c.setWater(s2 === 'deep' ? 2 : s2 === 'water' ? 1 : 0); }
+    const inWater = p.water > 0;
+    this.waterline.setVisible(inWater);
+    if (inWater) {
+      const w = p.water === 2 ? 1.25 : 1;
+      this.waterline.setPosition(p.x, p.y + 2).setDepth(p.y + 0.5).setScale(w * (1 + Math.sin(this.time.now / 300) * 0.04), w);
+      this.rippleT -= dt;
+      if (this.rippleT <= 0) { this.rippleT = moving ? 260 : 1100; this.ripple(p.x, p.y + 2, p.water === 2 ? 1.2 : 0.9); }
+    }
+    const snorkel = p.water === 2;
+    if (snorkel !== this.underwater) { this.underwater = snorkel; music.play(snorkel ? 'underwater' : THEME[this.mapId]); }
+    this.mask.setVisible(snorkel);
+    if (snorkel) {
+      const headY = p.y + p.sink - (p.id === 'finn' ? 54 : 50) + Math.sin(p.phase * 1.3) * 1.5;
+      this.mask.setPosition(p.x + (p.dir === 'side' ? (p.flip ? -4 : 4) : 0), headY).setDepth(p.y + 1).setFlipX(p.dir === 'side' && p.flip);
+      this.bubbleT -= dt;
+      if (this.bubbleT <= 0) {
+        this.bubbleT = 500 + Math.random() * 600;
+        const b = this.add.image(p.x + 10, headY - 12, 'drop').setDepth(p.y + 2).setScale(0.7);
+        this.tweens.add({ targets: b, y: b.y - 26, x: b.x + (Math.random() - 0.5) * 8, alpha: 0, duration: 900, onComplete: () => b.destroy() });
+      }
+    }
   }
 
   // Tall props in front of the player go translucent so you never lose your character.

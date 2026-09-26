@@ -7,6 +7,8 @@ import { initInput, input } from './systems/input.js';
 import { hud, portrait } from './ui/hud.js';
 import { WorldScene } from './scenes/WorldScene.js';
 import { FAMILY } from './data/characters.js';
+import { music } from './systems/music.js';
+import { daylight } from './systems/daylight.js';
 
 const $ = id => document.getElementById(id);
 const QA = new URLSearchParams(location.search).has('qa');
@@ -32,7 +34,17 @@ function setMuted(m) {
   writeSave(state.save);
 }
 
+function setMusic(on) {
+  state.save.settings.music = on;
+  music.setEnabled(on);
+  hud.setMusic(on);
+  writeSave(state.save);
+}
+
 hud.init({
+  getSave: () => state.save,
+  onMusic: () => setMusic(!state.save.settings.music),
+  onCamera: () => state.scene?.takePhoto(),
   onSwitch: id => state.scene?.switchTo(id),
   onMute: () => setMuted(!state.save.settings.muted),
   onReset: () => {
@@ -41,6 +53,9 @@ hud.init({
   },
 });
 hud.setMuted(state.save.settings.muted);
+hud.setMusic(state.save.settings.music);
+music.setEnabled(state.save.settings.music);
+daylight.init($('tint'));
 
 initInput({ zone: $('joy-zone'), base: $('joy-base'), knob: $('joy-knob'), actionBtn: $('action-button') });
 input.onKey = (k) => {
@@ -48,7 +63,8 @@ input.onKey = (k) => {
   const i = ['1', '2', '3', '4'].indexOf(k);
   if (i >= 0) state.scene.switchTo(FAMILY[i]);
   if (k === 'm') setMuted(!state.save.settings.muted);
-  if (k === 'escape') hud.openMenu(!hud.menuOpen);
+  if (k === 'escape') { if (hud.albumOpen) hud.openAlbum(false); else hud.openMenu(!hud.menuOpen); }
+  if (k === 'p') state.scene?.takePhoto();
 };
 
 function resizeGame() {
@@ -60,6 +76,7 @@ function resizeGame() {
 function boot() {
   if (state.game) return;
   audio.unlock();
+  music.retry();
   input.action = false;
   $('start-screen').hidden = true;
   $('game-shell').removeAttribute('aria-hidden');
@@ -85,7 +102,8 @@ function boot() {
   addEventListener('resize', resizeGame);
   addEventListener('orientationchange', () => setTimeout(resizeGame, 250));
   // audio needs a gesture on iOS; re-arm on any tap
-  addEventListener('pointerdown', () => audio.unlock(), { passive: true });
+  addEventListener('pointerdown', () => { audio.unlock(); music.retry(); }, { passive: true });
+  addEventListener('keydown', () => { audio.unlock(); music.retry(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) state.scene?.persist(true); });
 }
 
@@ -99,4 +117,9 @@ function startSoon() {
   requestAnimationFrame(() => setTimeout(boot, 30));
 }
 $('start-button').addEventListener('click', startSoon);
+
+// Offline play: register the service worker (skipped in ?qa test runs).
+if ('serviceWorker' in navigator && !QA && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('./sw.js').catch(() => { /* offline support is optional */ });
+}
 addEventListener('keydown', e => { if (!state.game && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); startSoon(); } });

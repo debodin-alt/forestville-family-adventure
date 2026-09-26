@@ -3,6 +3,9 @@
 import { speakerInfo, FAMILY, CHARACTERS } from '../data/characters.js';
 import { paintPortrait } from '../art/critters.js';
 import { audio } from '../systems/audio.js';
+import { paintFish } from '../art/fish.js';
+import { FISH, SEA_LIFE } from '../data/fish.js';
+import { loadPhotos } from '../systems/photos.js';
 
 const $ = id => document.getElementById(id);
 const portraitCache = {};
@@ -15,12 +18,13 @@ function portrait(id, size = 96) {
 }
 export { portrait };
 
-const VERB_LABEL = { talk: 'Talk', examine: 'Look', collect: 'Take', activate: 'Use', travel: 'Travel' };
+const VERB_LABEL = { talk: 'Talk', examine: 'Look', collect: 'Take', activate: 'Use', travel: 'Travel', fish: 'Fish', spot: 'Spot' };
 
 export const hud = {
   lines: [], typing: null, onDone: null, full: '', shown: 0, lastBlip: 0,
 
-  init({ onSwitch, onMute, onReset }) {
+  init({ onSwitch, onMute, onReset, onMusic, onCamera, getSave }) {
+    this.getSave = getSave;
     this.el = {
       chapter: $('chapter-label'), quest: $('quest-label'), pips: $('feather-pips'),
       title: $('area-title'), toast: $('toast'), prompt: $('prompt'), promptKey: $('prompt-key'), promptText: $('prompt-text'),
@@ -30,7 +34,17 @@ export const hud = {
       ending: $('ending'), endEyebrow: $('ending-eyebrow'), endTitle: $('ending-title'), endText: $('ending-text'), endRow: $('ending-row'), endBtn: $('ending-button'),
       muteToggle: $('mute-toggle'), resetBtn: $('reset-button'), resetConfirm: $('reset-confirm'), resetYes: $('reset-yes'), resetNo: $('reset-no'),
       closeMenu: $('close-menu'), app: $('app'),
+      musicToggle: $('music-toggle'), camera: $('camera-button'), albumBtn: $('album-button'), album: $('album'), albumBody: $('album-body'), closeAlbum: $('close-album'),
+      catchCard: $('catch'), catchEyebrow: $('catch-eyebrow'), catchArt: $('catch-art'), catchName: $('catch-name'), catchMeta: $('catch-meta'), catchBlurb: $('catch-blurb'),
+      flash: $('flash'),
     };
+    this.el.musicToggle.addEventListener('click', () => onMusic());
+    this.el.camera.addEventListener('click', () => onCamera());
+    this.el.albumBtn.addEventListener('click', () => { this.openMenu(false); this.openAlbum(true); });
+    this.el.closeAlbum.addEventListener('click', () => this.openAlbum(false));
+    this.el.album.addEventListener('pointerdown', e => { if (e.target === this.el.album) this.openAlbum(false); });
+    this.el.album.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { audio.tap(); this.albumTab(t.dataset.tab); }));
+    this.el.catchCard.addEventListener('pointerdown', () => this.hideCatch());
     // switcher portraits
     this.el.switcher.innerHTML = '';
     FAMILY.forEach((id, i) => {
@@ -57,7 +71,72 @@ export const hud = {
     this.el.resetYes.addEventListener('click', () => { onReset(); });
   },
 
+  setMusic(on) {
+    this.el.musicToggle.textContent = on ? 'Music: on' : 'Music: off';
+    this.el.musicToggle.setAttribute('aria-pressed', String(on));
+  },
+
+  flash() { const f = this.el.flash; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); },
+
+  catchCard({ spec, size, isNew, count, spotted }) {
+    const e = this.el;
+    e.catchEyebrow.textContent = spotted ? 'Spotted!' : 'You caught';
+    e.catchArt.innerHTML = ''; e.catchArt.appendChild(paintFish(spec, 150 * 2, 94 * 2));
+    e.catchName.textContent = spec.name;
+    e.catchMeta.innerHTML = '';
+    const meta = spotted ? `Sea life ${count}/5` : spec.junk ? 'Not a fish, technically' : `${size} cm · released`;
+    e.catchMeta.append(meta);
+    if (isNew) { const b = document.createElement('span'); b.className = 'new'; b.textContent = 'NEW'; e.catchMeta.appendChild(b); }
+    e.catchBlurb.textContent = spec.blurb;
+    e.catchCard.classList.add('show');
+    clearTimeout(this.catchT); this.catchT = setTimeout(() => this.hideCatch(), 3600);
+  },
+  hideCatch() { this.el.catchCard.classList.remove('show'); },
+
+  openAlbum(open) {
+    this.el.album.hidden = !open; this.albumOpen = open;
+    if (open) { audio.whoosh(true); this.albumTab(this.tab || 'photos'); this.el.closeAlbum.focus(); } else audio.whoosh(false);
+  },
+
+  albumTab(tab) {
+    this.tab = tab;
+    this.el.album.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    const body = this.el.albumBody; body.innerHTML = ''; body.scrollTop = 0;
+    const s = this.getSave();
+    if (tab === 'photos') {
+      const photos = loadPhotos();
+      if (!photos.length) { body.innerHTML = '<p class="album-empty">No photos yet. Tap the camera button up top to take one, anywhere, any time.</p>'; return; }
+      const g = document.createElement('div'); g.className = 'photo-grid';
+      photos.forEach((p, i) => {
+        const f = document.createElement('figure'); f.className = 'polaroid'; f.style.setProperty('--r', `${(i % 3 - 1) * 1.6}deg`); f.style.margin = '0';
+        const img = document.createElement('img'); img.src = p.data; img.alt = p.caption || 'Family photo'; img.loading = 'lazy';
+        const c = document.createElement('figcaption'); c.textContent = p.caption || '';
+        f.append(img, c); g.appendChild(f);
+      });
+      body.appendChild(g);
+      return;
+    }
+    const table = tab === 'fish' ? FISH : SEA_LIFE;
+    const have = tab === 'fish' ? s.world.fish : Object.fromEntries(s.quests.ch3.spotted.map(id => [id, { n: 1 }]));
+    const found = Object.keys(table).filter(id => have[id]).length;
+    const sum = document.createElement('p'); sum.className = 'log-summary';
+    sum.textContent = tab === 'fish' ? `${found} of ${Object.keys(table).length} found · catch and release` : `${found} of ${Object.keys(table).length} spotted in Cabbage Tree Bay`;
+    body.appendChild(sum);
+    const g = document.createElement('div'); g.className = 'log-grid';
+    for (const [id, spec] of Object.entries(table)) {
+      const got = have[id];
+      const d = document.createElement('div'); d.className = 'log-item' + (got ? '' : ' unknown');
+      d.appendChild(paintFish(spec, 260, 160, !got));
+      const b = document.createElement('b'); b.textContent = got ? spec.name : '???';
+      const sm = document.createElement('small');
+      sm.textContent = got ? (tab === 'fish' ? (spec.junk ? `found ×${got.n}` : `×${got.n} · best ${got.best} cm`) : 'spotted') : (tab === 'fish' ? 'not caught yet' : 'not spotted yet');
+      d.append(b, sm); g.appendChild(d);
+    }
+    body.appendChild(g);
+  },
+
   openMenu(open) {
+    if (open !== !!this.menuOpen) audio.whoosh(open);
     this.el.menu.hidden = !open;
     this.el.resetConfirm.hidden = true; this.el.resetBtn.hidden = false;
     this.menuOpen = open;

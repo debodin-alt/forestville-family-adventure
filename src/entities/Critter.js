@@ -3,14 +3,15 @@
 
 import { ART, FW, FH, GROUND, DIRS, FRAMES, paintCritterSheet } from '../art/critters.js';
 import { CHARACTERS } from '../data/characters.js';
+import { addCritterFrames } from '../art/assets.js';
 
 export function ensureCritterTexture(scene, id) {
   const key = `crit-${id}`;
-  if (scene.textures.exists(key)) return key;
-  const tex = scene.textures.addCanvas(key, paintCritterSheet(id));
-  DIRS.forEach((d, r) => FRAMES.forEach((f, c) => tex.add(`${d}-${f}`, 0, c * FW * ART, r * FH * ART, FW * ART, FH * ART)));
+  const tex = scene.textures.exists(key) ? scene.textures.get(key) : scene.textures.addCanvas(key, paintCritterSheet(id));
+  addCritterFrames(tex);   // works for painted canvases and baked images
   for (const d of DIRS) {
-    scene.anims.create({ key: `${id}-walk-${d}`, frames: [0, 1, 2, 3].map(i => ({ key, frame: `${d}-walk${i}` })), frameRate: 9, repeat: -1 });
+    const k = `${id}-walk-${d}`;
+    if (!scene.anims.exists(k)) scene.anims.create({ key: k, frames: [0, 1, 2, 3].map(i => ({ key, frame: `${d}-walk${i}` })), frameRate: 9, repeat: -1 });
   }
   return key;
 }
@@ -33,6 +34,7 @@ export class Critter {
     this.sprite.setScale(this.base);
     this.x = x; this.y = y; this.dir = 'down'; this.flip = false;
     this.moving = false; this.phase = Math.random() * 10; this.blinkAt = 0; this.hop = 0;
+    this.water = 0; this.sink = 0; this.sinkTarget = 0;
     // simple wander brain for NPCs
     this.home = { x, y }; this.wander = 0; this.target = null; this.pause = 1000 + Math.random() * 2000;
     this.sync();
@@ -79,15 +81,31 @@ export class Critter {
     this.shadow.setScale(1 - (moving ? Math.abs(Math.sin(this.phase * 2)) * 0.08 : 0) + hopY * 0.01, 1);
   }
 
-  jump() { this.hop = 260; }
+  jump() { if (!this.water) this.hop = 260; }
+
+  // 0 = dry, 1 = wading (legs under water), 2 = swimming (just head and shoulders)
+  setWater(level) {
+    if (level === this.water) return;
+    this.water = level;
+    const goose = this.id === 'finn';
+    this.sinkTarget = level === 0 ? 0 : level === 1 ? 13 : goose ? 26 : 44;
+    this.shadow.setVisible(level === 0 && this.sprite.visible);
+  }
 
   sync() {
-    this.sprite.setPosition(this.x, this.y + (this.hopY || 0));
+    if (this.sink !== this.sinkTarget) {
+      this.sink += Math.sign(this.sinkTarget - this.sink) * Math.min(Math.abs(this.sinkTarget - this.sink), 2.2);
+      const cut = Math.round(this.sink * ART);
+      if (cut > 0) this.sprite.setCrop(0, 0, FW * ART, GROUND * ART - cut);
+      else this.sprite.isCropped = false;
+    }
+    const bob = this.water === 2 ? Math.sin(this.phase * 1.3) * 1.5 : 0;
+    this.sprite.setPosition(this.x, this.y + (this.hopY || 0) + this.sink + bob);
     this.sprite.setDepth(this.y);
     this.shadow.setPosition(this.x, this.y - 1).setDepth(this.y - 2);
   }
 
-  setVisible(v) { this.sprite.setVisible(v); this.shadow.setVisible(v); }
+  setVisible(v) { this.sprite.setVisible(v); this.shadow.setVisible(v && !this.water); }
 
   destroy() { this.sprite.destroy(); this.shadow.destroy(); }
 

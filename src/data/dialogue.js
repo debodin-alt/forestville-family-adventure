@@ -207,6 +207,73 @@ export const LINES = {
   ],
 };
 
+// ---------- fishing, snorkelling, ferry, harbour ----------
+export const MORE = {
+  shedFirst: c => [
+    ['sign', 'The garden shed. Smells like sunscreen, two-stroke and old cricket pads.'],
+    ['sign', 'Leaning in the corner: the family fishing rod.'],
+    [c.who, c.who === 'finn' ? 'I promise not to catch any ducks.' : 'Right. Let’s see what’s biting.'],
+    ['sign', 'Stand at the edge of any water, face it, and press the button to cast. When the float plunges under, press again!'],
+  ],
+  shedAgain: [['sign', 'Garden shed. The mower is judging you.']],
+  kezSnorkel: [
+    ['kez', 'Reckon you lot deserve a snorkel after all that. Cabbage Tree Bay, right off Shelly Beach.'],
+    ['kez', 'It’s an aquatic reserve, so look but don’t touch. Groper, wobbegongs, cuttlefish, the lot.'],
+    ['kez', 'Here, masks and snorkels from the surf club. Just swim out from Shelly.'],
+  ],
+  kezSnorkelAgain: c => [['kez', `Spotted ${c.q.ch3.spotted.length} so far? The groper usually hangs round the middle of the bay.`]],
+  ch3Done: [
+    ['jessia', 'Okay. That was actually amazing.'],
+    ['finn', 'The groper looked right at me. We’re friends now.'],
+    ['jarency', 'Next weekend: the ferry into the city?'],
+    ['dan', 'Why wait? The ferry’s at the wharf at the end of the Corso. It’s still light.'],
+  ],
+  ferryLocked: c => [['sign', 'MANLY WHARF. Ferries to Circular Quay every half hour.'], [c.who, 'Another day. There’s still stuff to do here.']],
+  harbourArrive: [
+    ['sign', 'Thirty minutes on the Manly ferry: past the Heads, past the little beaches, and into the harbour.'],
+    ['finn', 'Dad. Emergency.'],
+    ['dan', 'Again?'],
+    ['finn', 'The ferry is the best thing that has ever happened to me.'],
+    ['jarency', 'Plan: Jess busks at the Quay, somebody catches a fish off the wharf, then a family photo on the big steps.'],
+    ['jessia', 'I did not agree to busking.'],
+    ['dan', 'You brought the guitar.'],
+    ['jessia', '…Fine.'],
+  ],
+  rodSpare: [['dan', 'Brought the rod from the shed, just in case.']],
+  busk: c => c.who === 'dan'
+    ? [['jessia', 'Don’t sing.'], ['sign', 'Dan sings. Jessia sighs, then joins in on harmonies. It’s… actually lovely.'], ['sign', 'A tourist drops a two-dollar coin in the case. A gull tries to take it.']]
+    : c.who === 'jessia'
+      ? [['sign', 'Jessia plays the song she wrote this morning. It’s called “Goose Emergency”. It has a second chord now.'], ['sign', 'A small crowd claps. Finn bows, for some reason.']]
+      : [['jessia', 'One song. Then we never speak of this.'], ['sign', 'Jessia plays. People stop to listen. A few coins land in the case.'], ['jessia', 'Okay. That was fun. Tell no one.']],
+  buskAgain: [['jessia', 'I’m on a break. Artists need breaks.']],
+  harbourFish: [['sign', 'A harbour catch! Everyone on the wharf is impressed. Even the gulls.']],
+  photoLocked4: c => [[c.who, c.q.ch4.busk ? 'Somebody still has to catch a fish off the wharf.' : 'Jess hasn’t busked yet. She’s pretending she forgot.']],
+  photo4: [
+    ['jarency', 'Everyone on the steps. Bridge behind us. Perfect.'],
+    ['finn', 'Can the ferry be in it?'],
+    ['dan', 'The ferry is in every photo from today, mate.'],
+    ['jessia', 'Say “goose emergency”.'],
+    ['finn', 'GOOSE EMERGENCY!'],
+  ],
+  ibisHarbour: [['ibis', '…'], ['sign', 'A city ibis. It has clearly seen things.']],
+};
+
+// Family chatter for later in the game (after Chapter 2 at home, and at the harbour).
+export const LATER = {
+  home: {
+    dan: c => pick([[['dan', 'Rod’s in the shed if you want a fish at the pond. Catch and release, yeah?']], [['dan', 'I could get used to weekends like this.']]], c.times),
+    finn: c => pick([[['finn', 'Did you know there are yabbies in the creek? YABBIES.']], [['finn', 'I’m keeping a fish log. It’s mostly boots so far.']]], c.times),
+    jessia: c => pick([[['jessia', 'Fishing is just sitting still with extra steps. I love it.']], [['jessia', 'I added a bridge to “Goose Emergency”. The song, not a real bridge.']]], c.times),
+    jarency: c => pick([[['jarency', 'Take a photo of the jacaranda for the album. It’s showing off today.']], [['jarency', 'Look at this place in the golden hour. Worth it.']]], c.times),
+  },
+  harbour: {
+    dan: c => pick([[['dan', 'Best view in Sydney, and I’ve got a coffee. Perfect.']], [['dan', 'Fish bite best off the end of the wharves. Allegedly.']]], c.times),
+    finn: c => pick([[['finn', 'That ibis has a whole sandwich. Respect.']], [['finn', 'Can we live on the ferry?']]], c.times),
+    jessia: c => [['jessia', c.q.ch4.busk ? 'My hands still smell like guitar strings and chips.' : 'If I busk, nobody films it. Deal?']],
+    jarency: c => pick([[['jarency', c.q.ch4.photo ? 'Two family photos in one weekend. New record.' : 'Photo on the big steps once we’re done. Bridge in the background.']], [['jarency', 'Look at the light on the sails.']]], c.times),
+  },
+};
+
 export const EXAMINE = {
   mailbox: c => [['sign', 'Letterbox. Two pizza menus, a council newsletter and a postcard from Nana.']],
   hoist: c => [['sign', 'The Hills Hoist turns slowly in the breeze. Somebody’s socks have been out there since Tuesday.']],
@@ -219,6 +286,9 @@ export const EXAMINE = {
   pelican: c => [['sign', 'A pelican. It is pretending not to want your chips. It wants your chips.']],
   surfFlags: c => [['sign', 'Red and yellow flags. Swim between them.']],
   cafe: c => [['sign', 'The Bush Bean. It smells like coffee and banana bread.']],
+  sails: c => [['sign', 'The great white sails catch the afternoon light. Up close, they’re made of thousands of little tiles.']],
+  customs: c => [['sign', 'An old sandstone building with a clock. It has watched a lot of ferries come and go.']],
+  fig: c => [['sign', 'A giant Moreton Bay fig. Its roots look like they’re holding the whole garden down.']],
 };
 
 export { NAMES };

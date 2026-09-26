@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Forestville bake</title>
+<p id="status">Baking…</p>
+<script type="module">
+// Paints every sprite sheet, prop and ground chunk with the same code the game uses,
+// and hands them to tools/bake.mjs as data URLs.
+import * as PROPS from '../src/art/props.js';
+import { paintCritterSheet, paintPortrait } from '../src/art/critters.js';
+import { ANIMALS } from '../src/art/critters.js';
+import { ART_VERSION, groundChunks, animalStrip, propArgs, propKey } from '../src/art/assets.js';
+import { forestville } from '../src/data/maps/forestville.js';
+import { manly } from '../src/data/maps/manly.js';
+import { harbour } from '../src/data/maps/harbour.js';
+import { FAMILY, CHARACTERS } from '../src/data/characters.js';
+
+const hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); };
+
+window.bake = () => {
+  const files = [];
+  // WebP (with alpha) keeps downloads small; Safari 14+ and every modern browser support it
+  const add = (key, canvas, file, extra = {}, type = 'image/webp', q = 0.92) => files.push({ key, file: file.replace(/\.png$/, '.webp'), data: canvas.toDataURL(type, q), ...extra });
+  for (const id of Object.keys(CHARACTERS)) add(`crit-${id}`, paintCritterSheet(id), `crit-${id}.png`);
+  for (const kind of Object.keys(ANIMALS)) { const s = animalStrip(kind); add(`ani-${kind}`, s.canvas, `ani-${kind}.png`, { meta: { w: s.w, h: s.h, n: s.n } }); }
+  const props = new Map();
+  for (const map of [forestville, manly, harbour]) {
+    for (const p of map.buildProps()) {
+      const args = propArgs(p), key = propKey(p.kind, args);
+      if (props.has(key)) { props.get(key).maps.add(map.id); continue; }
+      const res = PROPS[p.kind](...args);
+      props.set(key, { res, maps: new Set([map.id]) });
+    }
+    for (const { key, canvas } of groundChunks(map)) add(key, canvas, `${key}.webp`, { maps: [map.id] }, 'image/webp', 0.9);
+  }
+  for (const [key, { res, maps }] of props) {
+    add(key, res.canvas, `p-${hash(key)}.png`, { maps: [...maps], meta: { ax: res.ax, ay: res.ay, collide: res.collide, flat: res.flat, w: res.canvas.width / 2, h: res.canvas.height / 2 } });
+  }
+  // app icons: the family on a eucalyptus-green tile
+  const icons = [];
+  for (const size of [180, 192, 512]) {
+    const c = document.createElement('canvas'); c.width = c.height = size; const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, size); g.addColorStop(0, '#b8d69b'); g.addColorStop(1, '#6da477');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+    const pr = size * 0.42;
+    [[0.29, 0.34], [0.71, 0.34], [0.29, 0.72], [0.71, 0.72]].forEach(([x, y], i) => ctx.drawImage(paintPortrait(FAMILY[i], 256), size * x - pr / 2, size * y - pr / 2, pr, pr));
+    icons.push({ file: `icon-${size}.png`, data: c.toDataURL('image/png') });
+  }
+  document.getElementById('status').textContent = `Baked ${files.length} files`;
+  return { version: ART_VERSION, files, icons };
+};
+window.ready = true;
+</script>

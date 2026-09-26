@@ -133,15 +133,24 @@ export function buildProps() {
   return P;
 }
 
-export function colliders() {
+// Cabbage Tree Bay (aquatic reserve) off Shelly Beach: snorkelling spot, no fishing.
+export const BAY = [[2130, 905], [2420, 945], [2580, 905], [2620, 770], [W, 640], [W, 1560], [2150, 1560], [2080, 1180]];
+const LAND_EDGE = [...LAND, LAND[0]];
+const inBay = (x, y) => inPoly(x, y, BAY);
+const seaDepth = (x, y) => (inPoly(x, y, LAND) ? 0 : distToPolyline(x, y, LAND_EDGE));
+
+export function colliders(opts = {}) {
   return [
-    { outsidePoly: LAND },
+    // wade up to ~55px into the surf; deeper only with snorkel gear inside the bay
+    { fn: (x, y) => { const d = seaDepth(x, y); return d > 55 && !(opts.canSwim && opts.canSwim() && inBay(x, y)); } },
     { rect: [2560, 110, 150, 12] },     // lookout railing edge
     { rect: [W - 30, 0, 30, 640] },    // cliff edge
   ];
 }
 
 export function surfaceAt(x, y) {
+  const d = seaDepth(x, y);
+  if (d > 0) return d > 55 ? 'deep' : 'water';
   if (inRect(x, y, [2560, 120, 150, 90])) return 'wood';
   if (inPoly(x, y, HEADLAND)) return distToPolyline(x, y, TRACK_PTS) < 18 ? 'gravel' : 'leaves';
   if (inRect(x, y, ROCKS)) return 'rock';
@@ -152,12 +161,17 @@ export function surfaceAt(x, y) {
   return 'sand';
 }
 
+export function fishWater(x, y) {
+  if (seaDepth(x, y) <= 0) return null;
+  return inBay(x, y) ? 'reserve' : 'surf';
+}
+
 export const manly = {
   id: 'manly', w: W, h: H, bg: '#3a9bb3', edgeTop: '#e2d2b2', edgeBottom: '#2a7f9e',
   spawn: [MSPOTS.busStop[0] + 40, MSPOTS.busStop[1] + 60],
   family: { dan: [250, 520], finn: [1860, 860], jarency: [420, 760], jessia: [2250, 740] },
   npcs: [{ id: 'kez', x: MSPOTS.kez[0], y: MSPOTS.kez[1], wander: 50 }],
-  areas: AREAS, paintGround, buildProps, colliders, surfaceAt,
+  areas: AREAS, paintGround, buildProps, colliders, surfaceAt, fishWater, bay: BAY,
   roads: [],
   sea: { yTop: 1060 },
   land: LAND,

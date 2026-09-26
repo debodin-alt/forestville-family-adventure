@@ -2,7 +2,11 @@
 // Kept deliberately small (a few dozen sprites) for phones.
 
 import { ANIMALS, ART } from '../art/critters.js';
-import { car as paintCar } from '../art/props.js';
+import { car as paintCar, ferry as paintFerry } from '../art/props.js';
+import { paintFish } from '../art/fish.js';
+import { animalStrip, addStripFrames } from '../art/assets.js';
+import { state } from '../state.js';
+import { SEA_LIFE } from '../data/fish.js';
 import { makeCanvas, ellipse, rng } from '../utils/canvas.js';
 import { audio } from './audio.js';
 import { SPOTS, G } from '../data/maps/forestville.js';
@@ -10,13 +14,15 @@ import { MSPOTS } from '../data/maps/manly.js';
 
 function animalTexture(scene, kind) {
   const key = `ani-${kind}`;
-  if (scene.textures.exists(key)) return key;
-  const frames = ANIMALS[kind]();
-  const w = frames[0].width, h = frames[0].height;
-  const [c, ctx] = makeCanvas(w * frames.length, h);
-  frames.forEach((f, i) => ctx.drawImage(f, i * w, 0));
-  const tex = scene.textures.addCanvas(key, c);
-  frames.forEach((_, i) => tex.add(i, 0, i * w, 0, w, h));
+  const baked = state.bakeMeta?.[key];
+  if (scene.textures.exists(key)) {
+    const tex = scene.textures.get(key);
+    if (baked) addStripFrames(tex, baked.w, baked.h, baked.n);
+    if (tex.has(0) || tex.has('0')) return key;
+    scene.textures.remove(key);
+  }
+  const { canvas, w, h, n } = animalStrip(kind);
+  addStripFrames(scene.textures.addCanvas(key, canvas), w, h, n);
   return key;
 }
 
@@ -31,7 +37,7 @@ export class Ambient {
     this.animals = {}; this.butterflies = []; this.flock = []; this.leaves = []; this.cars = []; this.gulls = []; this.swimmers = [];
     this.nextFlock = 4000; this.nextLeaf = 0; this.nextCar = [1000, 3000];
     this.makeShared();
-    if (map.id === 'forestville') this.forestville(); else this.manly();
+    if (map.id === 'forestville') this.forestville(); else if (map.id === 'manly') this.manly(); else this.harbour();
     this.motes();
   }
 
@@ -157,6 +163,33 @@ export class Ambient {
     this.tufts(20, (x, y) => m.surfaceAt(x, y) === 'leaves' || m.surfaceAt(x, y) === 'grass');
     this.butterfliesAround([[2350, 620], [2500, 400], [300, 450]]);
     this.lanes = [];
+    // Cabbage Tree Bay sea life (faint shapes from shore, clear when you snorkel)
+    this.creatures = {};
+    const homes = { groper: [2470, 1130, 90], wobbegong: [2260, 1030, 0], cuttlefish: [2620, 1010, 50], pjshark: [2330, 1300, 110], turtle: [2660, 1360, 120] };
+    for (const [id, [x, y, roam]] of Object.entries(homes)) {
+      const key = `sea-${id}`;
+      if (!this.scene.textures.exists(key)) this.scene.textures.addCanvas(key, paintFish(SEA_LIFE[id], 120, 76));
+      const spr = this.scene.add.image(x, y, key).setScale(0.42).setDepth(-3450).setAlpha(0.35).setTint(0x9fd0e0);
+      this.creatures[id] = { id, spr, x, y, hx: x, hy: y, roam, t: this.r() * 10 };
+    }
+  }
+
+  harbour() {
+    const m = this.map;
+    for (let i = 0; i < 60; i++) this.sparkleAt(this.r() * m.w, 80 + this.r() * 600);
+    this.addAnimal('ibisH', 'ibis', 1290, 930, { frames: [0, 2, 0, 1], fps: 2, mode: 'wander' });
+    this.addAnimal('ibisG', 'ibis', 2150, 1250, { frames: [0, 2, 0, 1], fps: 2, mode: 'wander' });
+    for (let i = 0; i < 5; i++) { const a = this.addAnimal(`hg${i}`, 'gull', 300 + this.r() * 1500, 760 + this.r() * 160, { frames: [1], fps: 1, oy: 0.8 }); a.mode = 'gull'; a.home = { x: a.x, y: a.y }; }
+    this.gullZone = [300, 760, 1500, 160];
+    this.tufts(30, (x, y) => m.surfaceAt(x, y) === 'grass');
+    this.butterfliesAround([[2100, 1450], [2500, 1500], [2300, 1200]]);
+    this.lanes = [];
+    // ferries crossing the harbour
+    if (!this.scene.textures.exists('ferry-move')) this.scene.textures.addCanvas('ferry-move', paintFerry().canvas);
+    this.ferries = [0, 1].map(i => {
+      const f = this.scene.add.image(i ? 2900 : -300, i ? 330 : 180, 'ferry-move').setScale(1 / ART * 0.8).setDepth(-3300).setFlipX(!!i);
+      return { f, dir: i ? -1 : 1, v: 60 + i * 15 };
+    });
   }
 
   // ---------- update ----------
@@ -178,7 +211,7 @@ export class Ambient {
       } else if (a.mode === 'gull') {
         const pd = player ? Math.hypot(player.x - a.x, player.y - a.y) : 999;
         if (pd < 90 && !a.flying) { a.flying = true; a.frames = [0, 1]; a.fps = 8; a.vx = (a.x > player.x ? 1 : -1) * 160; a.vy = -120; audio.bird('gull'); }
-        if (a.flying) { a.x += a.vx * sec; a.y += a.vy * sec; a.spr.setDepth(9e5); a.spr.setFlipX(a.vx < 0); if (a.y < -60 || a.x < -60 || a.x > this.map.w + 60) { a.flying = false; a.x = 200 + Math.random() * 1400; a.y = 640 + Math.random() * 360; a.frames = [1]; a.fps = 1; a.spr.setDepth(a.y); } }
+        if (a.flying) { a.x += a.vx * sec; a.y += a.vy * sec; a.spr.setDepth(9e5); a.spr.setFlipX(a.vx < 0); if (a.y < -60 || a.x < -60 || a.x > this.map.w + 60) { a.flying = false; const z = this.gullZone || [200, 640, 1400, 360]; a.x = z[0] + Math.random() * z[2]; a.y = z[1] + Math.random() * z[3]; a.frames = [1]; a.fps = 1; a.spr.setDepth(a.y); } }
         else if (Math.random() < 0.004) { a.x += (Math.random() - 0.5) * 20; a.spr.setFlipX(Math.random() < 0.5); a.spr.setDepth(a.y); }
       }
       a.spr.setPosition(a.x, a.y);
@@ -198,7 +231,7 @@ export class Ambient {
     this.nextFlock -= dt;
     if (this.nextFlock <= 0 && cam) {
       this.nextFlock = 11000 + Math.random() * 10000;
-      const kind = this.map.id === 'manly' ? 'gull' : (Math.random() < 0.55 ? 'cockatoo' : 'lorikeet');
+      const kind = this.map.id !== 'forestville' ? (Math.random() < 0.7 ? 'gull' : 'cockatoo') : (Math.random() < 0.55 ? 'cockatoo' : 'lorikeet');
       const tex = animalTexture(s, kind);
       const dir = Math.random() < 0.5 ? 1 : -1;
       const v = cam.worldView;
@@ -235,6 +268,23 @@ export class Ambient {
       L.l.x += (L.vx + Math.sin(L.ph) * 18) * sec; L.l.y += L.vy * sec; L.l.angle += L.rot * sec;
       L.l.setAlpha(Math.min(1, L.life / 1500));
       if (L.life <= 0) { L.l.destroy(); this.leaves.splice(i, 1); }
+    }
+    // sea life + ferries
+    if (this.creatures) {
+      const swimming = player && player.water === 2;
+      for (const c of Object.values(this.creatures)) {
+        c.t += sec * 0.25;
+        if (c.roam) { c.x = c.hx + Math.cos(c.t) * c.roam; c.y = c.hy + Math.sin(c.t * 1.3) * c.roam * 0.4; c.spr.setFlipX(Math.sin(c.t) > 0); }
+        c.spr.setPosition(c.x, c.y);
+        const a = swimming ? 0.9 : 0.35;
+        c.spr.alpha += (a - c.spr.alpha) * Math.min(1, sec * 3);
+        if (swimming) c.spr.clearTint(); else c.spr.setTint(0x9fd0e0);
+      }
+    }
+    if (this.ferries) for (const F of this.ferries) {
+      F.f.x += F.dir * F.v * sec;
+      if (F.f.x > this.map.w + 400) F.f.x = -400;
+      if (F.f.x < -400) F.f.x = this.map.w + 400;
     }
     // traffic
     this.updateTraffic(dt, player);

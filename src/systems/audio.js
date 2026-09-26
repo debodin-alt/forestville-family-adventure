@@ -72,7 +72,8 @@ class AudioSystem {
       sand: { freq: 700, q: 0.7, dur: 0.11, vol: 0.05 },
       soft: { freq: 500, q: 1.5, dur: 0.06, vol: 0.05 },
       rock: { freq: 1200, q: 3, dur: 0.05, vol: 0.06 },
-      water: { freq: 1800, q: 0.5, dur: 0.16, vol: 0.07 },
+      water: { freq: 1800, q: 0.5, dur: 0.16, vol: 0.09 },
+      swim: { freq: 900, q: 0.4, dur: 0.3, vol: 0.08 },
     }[surface] || { freq: 1400, q: 0.8, dur: 0.07, vol: 0.05 };
     this.burst({ ...S, freq: S.freq * v, vol: S.vol * v });
     if (surface === 'wood') this.tone({ f: 150 * v, type: 'triangle', dur: 0.06, vol: 0.05 });
@@ -109,6 +110,32 @@ class AudioSystem {
     this.tone({ f: 1046, type: 'sine', dur: 0.25, vol: 0.08 }); this.tone({ f: 1046, type: 'sine', t: 0.28, dur: 0.25, vol: 0.08 });
     this.burst({ freq: 300, q: 0.5, dur: 1.4, vol: 0.12, t: 0.5, type: 'lowpass', brown: true });
   }
+
+  // ---------- water + fishing ----------
+  splash(big) {
+    if (!this.ok) return;
+    this.burst({ freq: big ? 900 : 1500, q: 0.5, dur: big ? 0.5 : 0.25, vol: big ? 0.16 : 0.1 });
+    this.tone({ f: 500, f2: 180, type: 'sine', dur: 0.18, vol: 0.05 });
+  }
+  cast() { if (this.ok) { this.burst({ freq: 2500, q: 0.8, dur: 0.35, vol: 0.06 }); this.tone({ f: 900, f2: 300, type: 'sine', dur: 0.3, vol: 0.03 }); } }
+  plop() { if (this.ok) { this.tone({ f: 700, f2: 220, type: 'sine', dur: 0.14, vol: 0.09 }); this.burst({ freq: 1200, q: 1, dur: 0.12, vol: 0.05, t: 0.03 }); } }
+  nibble() { if (this.ok) this.tone({ f: 900, f2: 700, type: 'sine', dur: 0.06, vol: 0.05 }); }
+  bite() { if (this.ok) { this.burst({ freq: 1000, q: 0.6, dur: 0.35, vol: 0.14 }); this.tone({ f: 1320, type: 'square', dur: 0.08, vol: 0.05 }); this.tone({ f: 1760, type: 'square', t: 0.09, dur: 0.1, vol: 0.05 }); } }
+  reel() { if (this.ok) for (let i = 0; i < 8; i++) this.burst({ freq: 3800, q: 6, dur: 0.02, vol: 0.05, t: i * 0.045 }); }
+  caught(rare) {
+    if (!this.ok) return;
+    const n = rare ? [659, 784, 988, 1319, 1568] : [587, 740, 880, 1175];
+    n.forEach((f, i) => { this.tone({ f, type: 'triangle', t: i * 0.08, dur: 0.3, vol: 0.09 }); this.tone({ f: f * 2, type: 'sine', t: i * 0.08, dur: 0.2, vol: 0.025 }); });
+  }
+  gotAway() { if (this.ok) { this.tone({ f: 440, f2: 330, type: 'triangle', dur: 0.25, vol: 0.07 }); this.tone({ f: 330, f2: 220, type: 'triangle', t: 0.25, dur: 0.35, vol: 0.07 }); } }
+  spot() { if (this.ok) [1047, 1319, 1568].forEach((f, i) => this.tone({ f, type: 'sine', t: i * 0.1, dur: 0.6, vol: 0.06 })); }
+
+  // ---------- UI ----------
+  creak() { if (this.ok) this.tone({ f: 180, f2: 260, type: 'sawtooth', dur: 0.4, vol: 0.025 }); }
+  whoosh(up = true) { if (this.ok) this.burst({ freq: up ? 1800 : 900, q: 0.7, dur: 0.22, vol: 0.05 }); }
+  pop() { if (this.ok) { this.tone({ f: 600, f2: 1100, type: 'sine', dur: 0.09, vol: 0.08 }); } }
+  horn() { if (this.ok) { this.tone({ f: 146, type: 'sawtooth', dur: 1.2, vol: 0.05, attack: 0.08 }); this.tone({ f: 220, type: 'sawtooth', dur: 1.2, vol: 0.03, attack: 0.08 }); } }
+  sparkle() { if (this.ok) [2093, 2637, 3136].forEach((f, i) => this.tone({ f, type: 'sine', t: i * 0.05, dur: 0.25, vol: 0.025 })); }
 
   quack() { if (this.ok) { this.tone({ f: 380, f2: 300, type: 'sawtooth', dur: 0.12, vol: 0.05 }); this.tone({ f: 360, f2: 290, type: 'sawtooth', t: 0.16, dur: 0.1, vol: 0.04 }); } }
   honk() { if (this.ok) { this.tone({ f: 440, f2: 330, type: 'sawtooth', dur: 0.14, vol: 0.06 }); this.tone({ f: 420, f2: 320, type: 'sawtooth', t: 0.17, dur: 0.14, vol: 0.06 }); } }

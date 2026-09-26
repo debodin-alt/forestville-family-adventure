@@ -18,6 +18,7 @@ function hit(s, x, y) {
   if (s.circle) { const [cx, cy, r] = s.circle; return (x - cx) ** 2 + (y - cy) ** 2 <= r * r; }
   if (s.ellipse) { const [cx, cy, rx, ry] = s.ellipse; return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1; }
   if (s.outsidePoly) return !inPoly(x, y, s.outsidePoly);
+  if (s.fn) return s.fn(x, y);
   return false;
 }
 
@@ -59,12 +60,14 @@ export class Collision {
     return this.pointBlocked(x, y) || this.pointBlocked(x - 10, y) || this.pointBlocked(x + 10, y) || this.pointBlocked(x, y - 5) || this.pointBlocked(x, y + 5);
   }
 
-  move(x, y, dx, dy) {
+  // `extra(x, y)` lets the caller add moving obstacles (other characters)
+  move(x, y, dx, dy, extra) {
+    const B = extra ? (px, py) => this.blocked(px, py) || extra(px, py, x, y) : (px, py) => this.blocked(px, py);
     let nx = x, ny = y;
-    if (dx && !this.blocked(x + dx, y)) nx = x + dx;
-    if (dy && !this.blocked(nx, y + dy)) ny = y + dy;
+    if (dx && !B(x + dx, y)) nx = x + dx;
+    if (dy && !B(nx, y + dy)) ny = y + dy;
     // unstick: if we somehow start inside something, allow any move
-    if (nx === x && ny === y && (dx || dy) && this.blocked(x, y)) { nx = x + dx; ny = y + dy; }
+    if (nx === x && ny === y && (dx || dy) && B(x, y)) { nx = x + dx; ny = y + dy; }
     return [nx, ny];
   }
 }

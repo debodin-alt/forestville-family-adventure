@@ -38,6 +38,7 @@ const BUSH_POLY = [[0, 0], [1660, 0], [1620, 230], [1330, 290], [930, 260], [770
 // Quest-relevant spots (also kept clear of random scenery)
 export const SPOTS = {
   start: [640, 1770],
+  shed: [905, 1655],
   duckNest: [1405, 500],
   kookaTree: [600, 1068],
   ibis: [2215, 1195],
@@ -255,6 +256,7 @@ export function buildProps() {
   add('hillsHoist', 330, 1610);
   add('outdoorTable', 620, 1740);
   add('guitarCase', 720, 1770);
+  add('shed', SPOTS.shed[0], SPOTS.shed[1]);
   add('roundTree', 230, 1500, 2, 0.9);
   add('shrub', 380, 1450, 1, 1); add('shrub', 880, 1460, 2, 1); add('shrub', 950, 1720, 3, 1);
   // back fence along the footpath with a gate gap
@@ -282,8 +284,8 @@ export function buildProps() {
 // ---- collision shapes (besides prop colliders) ----
 export function colliders() {
   return [
-    { ellipse: [G.pond.x, G.pond.y, G.pond.rx - 8, G.pond.ry - 8], except: G.jetty },
-    { ellipse: [215, 92, 50, 26] },       // waterfall pool
+    // the pond has a wadeable edge; only the middle is too deep
+    { ellipse: [G.pond.x, G.pond.y, G.pond.rx - 46, G.pond.ry - 40], except: G.jetty },
     { rect: [90, 0, 270, 50] },            // sandstone shelf
     { rect: [1640, 1432, 12, 968] }, { rect: [3180, 1432, 20, 968] }, // school side fences
     { rect: [180, 1404, 6, 796] },         // home west boundary
@@ -291,8 +293,12 @@ export function colliders() {
 }
 
 // ---- footstep surface ----
+const inPond = (x, y, k = 1) => ((x - G.pond.x) / (G.pond.rx * k)) ** 2 + ((y - G.pond.y) / (G.pond.ry * k)) ** 2 <= 1;
+const inPool = (x, y) => ((x - 215) / 58) ** 2 + ((y - 92) / 32) ** 2 <= 1;
+
 export function surfaceAt(x, y) {
   if (inRect(x, y, G.jetty)) return 'wood';
+  if (inPond(x, y, 0.97) || inPool(x, y)) return 'water';
   if (distToPolyline(x, y, CREEK_PTS) < 11) return 'water';
   if (inRect(x, y, G.sandpit)) return 'sand';
   if (inRect(x, y, G.playground)) return 'soft';
@@ -302,6 +308,14 @@ export function surfaceAt(x, y) {
   const pd = Math.hypot((x - G.pond.x) / 320, (y - G.pond.y - 10) / 225);
   if (Math.abs(pd - 1) < 0.07) return 'gravel';
   return 'grass';
+}
+
+// What kind of water (if any) is at this point: used for fishing.
+export function fishWater(x, y) {
+  if (inRect(x, y, G.jetty)) return null;
+  if (inPond(x, y)) return 'pond';
+  if (inPool(x, y) || distToPolyline(x, y, CREEK_PTS) < 13) return 'creek';
+  return null;
 }
 
 export const forestville = {
@@ -314,7 +328,7 @@ export const forestville = {
     { id: 'mo', x: SPOTS.mo[0], y: SPOTS.mo[1], wander: 40 },
     { id: 'aroha', x: SPOTS.aroha[0], y: SPOTS.aroha[1], wander: 60 },
   ],
-  areas: AREAS, paintGround, buildProps, colliders, surfaceAt,
+  areas: AREAS, paintGround, buildProps, colliders, surfaceAt, fishWater,
   roads: [{ y1: 1318, y2: 1352, x0: -140, x1: W + 140, crossing: G.crossing }],
   water: [{ type: 'ellipse', x: G.pond.x, y: G.pond.y, rx: G.pond.rx, ry: G.pond.ry }],
   creek: CREEK_PTS,
