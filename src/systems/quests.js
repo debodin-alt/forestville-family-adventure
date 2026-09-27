@@ -167,6 +167,9 @@ export function buildInteractables(S) {
       run: () => { if (!c1.done) S.say(LINES.busLocked(S.ctx())); else S.travel('manly'); },
     });
 
+    // --- the kart bus
+    add({ id: 'kartBus', verb: 'travel', label: 'Bus to Moore Park karts', x: 2840, y: 1240, r: 70, markerH: 100, run: () => S.karts() });
+
     // --- the shed with the fishing rod
     add({
       id: 'shed', verb: 'examine', label: 'Garden shed', x: SPOTS.shed[0], y: SPOTS.shed[1] + 8, r: 80, markerH: 110,
@@ -226,6 +229,7 @@ export function buildInteractables(S) {
         S.say(MORE.photo4, () => S.photo4());
       },
     });
+    add({ id: 'kartBusH', verb: 'travel', label: 'Bus to Moore Park karts', x: 560, y: 1000, r: 80, markerH: 100, run: () => S.karts() });
     ex('sails', 2380, 600, 'The sails', 'sails', { markerH: 150, r: 110 });
     ex('customs', 900, 1250, 'Old building', 'customs', { markerH: 160, r: 100 });
     ex('fig', 2250, 1066, 'Fig tree', 'fig', { markerH: 150 });

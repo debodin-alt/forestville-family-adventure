@@ -8,14 +8,27 @@ class AudioSystem {
     this.lastStep = 0;
   }
 
+  // Must be called from a tap/click/keypress (browsers only allow audio after a gesture).
   unlock() {
-    if (this.ctx) { if (this.ctx.state === 'suspended' && !this.muted) this.ctx.resume(); return; }
+    this.iosPlayback();
+    if (this.ctx) { if (this.ctx.state !== 'running' && !this.muted) this.ctx.resume().catch(() => {}); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
+    this.ctx.resume().catch(() => {});
+    // prime the output with one silent sample (older iOS needs a sound started inside the gesture)
+    const b0 = this.ctx.createBuffer(1, 1, 22050), s0 = this.ctx.createBufferSource();
+    s0.buffer = b0; s0.connect(this.ctx.destination); s0.start(0);
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.8;
-    this.master.connect(this.ctx.destination);
+    this.master.gain.value = this.muted ? 0 : 1;
+    // gentle limiter so music + effects + ambience never clip on phone speakers
+    const comp = this.ctx.createDynamicsCompressor();
+    comp.threshold.value = -10; comp.ratio.value = 4;
+    this.master.connect(comp).connect(this.ctx.destination);
+    // come back after the phone locks, a call, or switching apps
+    const wake = () => { if (this.ctx && this.ctx.state !== 'running' && !this.muted && !document.hidden) this.ctx.resume().catch(() => {}); };
+    document.addEventListener('visibilitychange', wake);
+    addEventListener('pageshow', wake); addEventListener('focus', wake);
     // one shared noise buffer
     const len = this.ctx.sampleRate * 2;
     this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -28,10 +41,31 @@ class AudioSystem {
     if (this.pendingZone) this.setZone(this.pendingZone);
   }
 
+  // iPhones mute web audio when the ring/silent switch is on. Declaring "playback" audio
+  // (Safari 16.4+) and playing a silent media element makes the game audible like a video would be.
+  iosPlayback() {
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
+    if (this.silentEl) { if (this.silentEl.paused) this.silentEl.play().catch(() => {}); return; }
+    try {
+      const rate = 8000, n = rate / 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+      const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+      w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+      const el = document.createElement('audio');
+      el.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      el.loop = true; el.setAttribute('playsinline', ''); el.setAttribute('x-webkit-airplay', 'deny');
+      el.play().catch(() => {});
+      this.silentEl = el;
+    } catch { /* ignore */ }
+  }
+
   setMuted(m) {
     this.muted = m;
+    if (this.silentEl) { if (m) this.silentEl.pause(); else this.silentEl.play().catch(() => {}); }
     if (!this.ctx) return;
-    this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.05);
+    if (!m && this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
+    this.master.gain.setTargetAtTime(m ? 0 : 1, this.ctx.currentTime, 0.05);
+    if (!m) this.item && setTimeout(() => this.item(), 60); // audible confirmation
   }
 
   get ok() { return !!this.ctx && !this.muted && this.ctx.state === 'running'; }
@@ -45,7 +79,7 @@ class AudioSystem {
     g.gain.setValueAtTime(0.0001, now);
     g.gain.exponentialRampToValueAtTime(vol, now + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-    o.connect(g).connect(dest || this.master);
+    o.connect(g).connect(dest || this.route || this.master);
     o.start(now); o.stop(now + dur + 0.02);
   }
 
@@ -55,7 +89,7 @@ class AudioSystem {
     const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(vol, now + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-    s.connect(f).connect(g).connect(this.master);
+    s.connect(f).connect(g).connect(this.route || this.master);
     s.start(now, Math.random() * 1.5); s.stop(now + dur + 0.02);
   }
 
@@ -144,6 +178,12 @@ class AudioSystem {
   // ---------- birds (called by the ambience scheduler or near wildlife) ----------
   bird(kind) {
     if (!this.ok) return;
+    if (!this.birdBus) { this.birdBus = this.ctx.createGain(); this.birdBus.gain.value = 2.4; this.birdBus.connect(this.master); }
+    this.route = this.birdBus;
+    try { this.birdCall(kind); } finally { this.route = null; }
+  }
+
+  birdCall(kind) {
     const c = this.ctx;
     if (kind === 'kookaburra') {
       // rolling laugh: rising, chattering notes
@@ -176,7 +216,7 @@ class AudioSystem {
     else if (zone === 'village') { src.buffer = this.brown; f.type = 'lowpass'; f.frequency.value = 260; }
     else { src.buffer = this.noise; f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.5; }
     src.connect(f);
-    const level = c.createGain(); level.gain.value = { bush: 0.035, beach: 0.3, village: 0.25, suburb: 0.018 }[zone];
+    const level = c.createGain(); level.gain.value = { bush: 0.09, beach: 0.45, village: 0.35, suburb: 0.05 }[zone];
     f.connect(level).connect(g);
     if (zone === 'beach') { // slow swell like waves arriving
       const lfo = c.createOscillator(), lg = c.createGain();

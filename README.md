@@ -46,6 +46,20 @@ A small, original, cozy family adventure set in Forestville and Manly on Sydneyâ
 - **Offline play:** a service worker caches the game after the first visit, and Phaser is bundled in `vendor/`.
 - **Faster start:** all art is pre-baked to `assets/baked/` (WebP). If a bake is missing or out of date, the game quietly paints everything in code instead.
 
+## Kart racing: Level 5 Karting, Moore Park
+
+This is a fictionalised version of the indoor electric-kart track on the top level of the Moore Park car park.
+
+- Catch the kart bus from the sign next to the B-Line stop in Forestville, or from the city street at the Quay.
+- The track has an F1-style layout, tyre walls, red-and-white kerbs, concrete pillars and LED ceiling strips.
+- The race starts with five red lights, and you race three laps against the family.
+- Touch: point the joystick where you want to drive. Keyboard: arrows or WASD. Space honks.
+- Best lap, wins and a podium photo are saved.
+
+## Sound on iPhone
+
+The game asks iOS for "playback" audio and keeps a silent media element running, so music and effects play even when the ring/silent switch is on. Check the volume buttons and the in-game speaker button if it's still quiet.
+
 ## Controls
 
 | | Touch | Keyboard |

@@ -1,6 +1,6 @@
 // Offline support. Bump CACHE when shipping changes that must replace cached files immediately;
 // otherwise files refresh in the background (stale-while-revalidate) and show on the next launch.
-const CACHE = 'forestville-v3-1';
+const CACHE = 'forestville-v4-1';
 const CORE = [
   './', './index.html', './styles/game.css', './manifest.webmanifest',
   './vendor/phaser-3.90.0.min.js', './src/main.js',

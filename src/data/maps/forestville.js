@@ -238,6 +238,7 @@ export function buildProps() {
   for (const x of [1690, 2160, 2640]) add('roundTree', x, 1150, 0, 0.75);
   add('signPost', 2990 + 60, 1110, 'FORESTVILLE VILLAGE', '#2f5f8f', 150);
   add('busStop', SPOTS.busStop[0], SPOTS.busStop[1] - 6, 'TO MANLY');
+  add('signPost', 2840, 1222, 'KARTS · MOORE PARK', '#c2643d', 150);
   // parked cars
   const cc = ['#d8453b', '#2f6fa3', '#f2f0e8', '#3f7a54', '#e9a33c', '#6f54a8'];
   [1760, 1910, 2270, 2420, 2570, 2720].forEach((x, i) => add('car', x, 1304, cc[i % cc.length], i % 2 ? 1 : -1));
@@ -322,6 +323,7 @@ export const forestville = {
   id: 'forestville', w: W, h: H, bg: '#9cc27c', edgeTop: '#6f9056', edgeBottom: '#93bb74',
   spawn: SPOTS.start,
   arriveAt: [2960, 1262],   // stepping off the bus
+  kartStop: [2840, 1262],
   family: { dan: [640, 1780], finn: [700, 1795], jarency: [1880, 1150], jessia: [1300, 880] },
   npcs: [
     { id: 'bev', x: SPOTS.bev[0], y: SPOTS.bev[1], wander: 50 },

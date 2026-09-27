@@ -10,7 +10,7 @@ const hz = m => 440 * Math.pow(2, (m - 69) / 12);
 const bars = s => s.trim().split('|').map(b => b.trim().split(/\s+/).map(t => (t === '-' ? null : midi(t))));
 const CHORD = {
   G: ['G3', 'B3', 'D4'], Em: ['E3', 'G3', 'B3'], C: ['C3', 'E3', 'G3'], D: ['D3', 'F#3', 'A3'], Am: ['A2', 'C3', 'E3'], Bm: ['B2', 'D3', 'F#3'],
-  A: ['A2', 'C#3', 'E3'], 'F#m': ['F#2', 'A2', 'C#3'], F: ['F2', 'A2', 'C3'], Dm: ['D3', 'F3', 'A3'], Bb: ['Bb2', 'D3', 'F3'], Gm: ['G2', 'Bb2', 'D3'],
+  A: ['A2', 'C#3', 'E3'], E: ['E2', 'G#2', 'B2'], 'F#m': ['F#2', 'A2', 'C#3'], F: ['F2', 'A2', 'C3'], Dm: ['D3', 'F3', 'A3'], Bb: ['Bb2', 'D3', 'F3'], Gm: ['G2', 'Bb2', 'D3'],
 };
 
 const THEMES = {
@@ -40,6 +40,15 @@ const THEMES = {
       F5 - E5 - D5 - C5 - | C5 - A4 - E4 - A4 - | Bb4 - D5 - F5 - D5 - | C5 - - - G4 - - - |
       F4 - Bb4 - D5 - - - | E4 - G4 - C5 - - - | A4 - C5 - E5 - C5 - | D5 - - - A4 - - - |
       G4 - Bb4 - D5 - Bb4 - | C5 - E5 - G5 - E5 - | F5 - C5 - A4 - C5 - | F4 - - - - - - -`),
+  },
+  race: {
+    bpm: 132, lead: 'keys', swing: 0, shaker: true, brush: true,
+    chords: 'Am F C G Am F C E Am F C G F G Am Am',
+    melody: bars(`
+      A4 C5 E5 A5 G5 E5 C5 E5 | F4 A4 C5 F5 E5 C5 A4 C5 | E4 G4 C5 E5 D5 C5 G4 C5 | D4 G4 B4 D5 B4 G4 D5 B4 |
+      A4 - E5 - A5 - G5 E5 | F5 - C5 - A4 - C5 - | E5 - G5 - E5 - C5 - | E5 - G#4 - B4 - E5 - |
+      A5 - - - E5 - C5 - | F5 - - - C5 - A4 - | G5 - - - E5 - C5 - | D5 - B4 - G4 - D5 - |
+      C5 - A4 - F4 - A4 - | B4 - D5 - G5 - B5 - | A5 - E5 - C5 - E5 - | A5 - - - - - - -`),
   },
   underwater: {
     bpm: 60, lead: 'bell', pad: true, sparse: true,

@@ -6,6 +6,7 @@ import { audio } from './systems/audio.js';
 import { initInput, input } from './systems/input.js';
 import { hud, portrait } from './ui/hud.js';
 import { WorldScene } from './scenes/WorldScene.js';
+import { KartScene } from './scenes/KartScene.js';
 import { FAMILY } from './data/characters.js';
 import { music } from './systems/music.js';
 import { daylight } from './systems/daylight.js';
@@ -96,7 +97,7 @@ function boot() {
     fps: QA ? { target: 60, min: 1, smoothStep: false } : { target: 60 },
     input: { keyboard: false, mouse: false, touch: false, gamepad: false },
     audio: { noAudio: true },
-    scene: [WorldScene],
+    scene: [WorldScene, KartScene],
     banner: false,
   });
   addEventListener('resize', resizeGame);

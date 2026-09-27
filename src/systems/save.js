@@ -21,7 +21,7 @@ export function freshSave() {
       ch3: { unlocked: false, gear: false, spotted: [], done: false },
       ch4: { unlocked: false, arrived: false, busk: false, fish: false, photo: false, done: false },
     },
-    world: { areasSeen: [], talked: {}, items: { rod: false, snorkel: false }, fish: {} },
+    world: { areasSeen: [], talked: {}, items: { rod: false, snorkel: false }, fish: {}, kart: { best: null, wins: 0, races: 0 } },
     settings: { muted: false, music: true },
     meta: { created: now, updated: now, migratedFrom: null },
   };
@@ -65,6 +65,8 @@ export function normalize(raw) {
   s.settings.music = bool(raw.settings?.music, true);
   const it = isObj(w.items) ? w.items : {};
   s.world.items = { rod: bool(it.rod, false), snorkel: bool(it.snorkel, false) };
+  const kt = isObj(w.kart) ? w.kart : {};
+  s.world.kart = { best: num(kt.best, null), wins: Math.max(0, num(kt.wins, 0)), races: Math.max(0, num(kt.races, 0)) };
   s.world.fish = {};
   if (isObj(w.fish)) for (const [k, v] of Object.entries(w.fish)) if (isObj(v) && typeof k === 'string' && k.length < 30) s.world.fish[k] = { n: Math.max(1, num(v.n, 1)), best: num(v.best, 0) };
   if (isObj(raw.meta)) { s.meta.created = num(raw.meta.created, s.meta.created); s.meta.migratedFrom = raw.meta.migratedFrom ?? null; }

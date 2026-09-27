@@ -85,6 +85,7 @@ export function buildProps() {
   add('ferry', 840, 428);   // moored at the end of wharf 3
   for (const [i, [x]] of WHARVES.entries()) add('signPost', x - 40, 716, `WHARF ${i + 2}`, '#1f6b47', 70);
   add('signPost', 700, 760, 'FERRIES → MANLY', '#1f6b47', 130);
+  add('signPost', 560, 972, 'BUS → MOORE PARK KARTS', '#c2643d', 170);
   add('sandstoneBuilding', 900, 1240, 'CUSTOMS HOUSE');
   add('shop', 380, 1240, 'cafe', { name: 'QUAY COFFEE' });
   add('shop', 1450, 1240, 'kiosk', { name: 'HARBOUR GELATO' });
@@ -115,6 +116,7 @@ export function fishWater(x, y) { return onLand(x, y) ? null : 'harbour'; }
 export const harbour = {
   id: 'harbour', w: W, h: H, bg: '#2a6f93', edgeTop: '#5f8f5a', edgeBottom: '#e1d2b4',
   spawn: [HSPOTS.ferry[0], HSPOTS.ferry[1] + 170],
+  kartStop: [560, 1060],
   family: { dan: [980, 820], finn: [1250, 880], jessia: [HSPOTS.busk[0], HSPOTS.busk[1]], jarency: [2300, 780] },
   npcs: [],
   areas: AREAS, paintGround, buildProps, colliders, surfaceAt, fishWater,

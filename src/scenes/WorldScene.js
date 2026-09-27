@@ -34,6 +34,7 @@ export class WorldScene extends Phaser.Scene {
     this.save = state.save;
     this.mapId = data.map || this.save.player.map || 'forestville';
     this.arriving = !!data.arrive;
+    this.arriveKind = data.arrive;
     this.busy = false;
   }
 
@@ -177,7 +178,7 @@ export class WorldScene extends Phaser.Scene {
 
   startPosition(map, who) {
     const s = this.save.player;
-    const fallback = this.arriving ? (map.arriveAt || map.spawn) : (map.family[who] || map.spawn);
+    const fallback = this.arriving ? ((this.arriveKind === 'kart' && map.kartStop) || map.arriveAt || map.spawn) : (map.family[who] || map.spawn);
     if (!this.arriving && s.map === map.id && Number.isFinite(s.x) && Number.isFinite(s.y)) {
       const c = new Collision(map.w, map.h, map.colliders(this.colOpts));
       if (!c.blocked(s.x, s.y)) return [s.x, s.y];
@@ -235,6 +236,7 @@ export class WorldScene extends Phaser.Scene {
       showTitle: (a, b) => hud.showTitle(a, b),
       emphasize: (x, y) => scene.emphasize(x, y),
       travel: id => scene.travel(id),
+      karts: () => scene.travelKart(),
       animal: key => scene.ambient.animals[key],
       walkAnimal: (key, x, y) => scene.ambient.walkTo(key, x, y, 'swim'),
       wanderAnimal: key => scene.ambient.wander(key),
@@ -335,6 +337,17 @@ export class WorldScene extends Phaser.Scene {
       writeSave(this.save);
       this.scene.restart({ map: mapId, arrive: true });
     });
+  }
+
+  travelKart() {
+    if (this.busy) return;
+    this.busy = true;
+    audio.bus();
+    hud.toast('Next stop: Moore Park');
+    state.returnMap = this.mapId;
+    this.persist(true);
+    this.cameras.main.fadeOut(700, 20, 20, 24);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('kart'));
   }
 
   photo() {
