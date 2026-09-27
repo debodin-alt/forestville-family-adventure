@@ -30,6 +30,7 @@
 
       <section id="game-shell" aria-hidden="true">
         <div id="game"></div>
+        <canvas id="kart-fpv" class="kart-fpv" hidden></canvas>
         <div id="tint" aria-hidden="true"></div>
         <div id="light" aria-hidden="true"></div>
         <div id="flash" aria-hidden="true"></div>
@@ -103,6 +104,7 @@
         <div id="kart-hud" class="kart-hud" hidden>
           <div id="kart-pos" class="kart-pos">1<sup>st</sup></div>
           <div class="kart-box"><b id="kart-lap">Lap 1/3</b><span id="kart-time">0:00.00</span><small id="kart-best">Best –</small></div>
+          <button id="kart-cam" class="kart-cam" type="button" aria-label="Change camera view"><span>Camera · V</span><b id="kart-cam-label">Overhead</b></button>
           <button id="kart-leave" class="round-button kart-leave" type="button" aria-label="Leave the kart track">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
           </button>

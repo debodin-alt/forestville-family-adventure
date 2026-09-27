@@ -11,6 +11,7 @@ import { writeSave } from '../systems/save.js';
 import { snapshot, addPhoto } from '../systems/photos.js';
 import { hud } from '../ui/hud.js';
 import { state } from '../state.js';
+import { KartFPV } from '../systems/kartfpv.js';
 
 const $ = id => document.getElementById(id);
 const MAX = 430, ACC = 360, BRAKE = 700, DRAG = 160, TURN = 2.9;
@@ -49,10 +50,23 @@ export class KartScene extends Phaser.Scene {
     this.phase = 'lights'; this.t = 0; this.raceT = 0; this.finishOrder = []; this.lightsOn = 0;
     this.setupHud();
     this.motor = this.makeMotor();
+    // camera: overhead or driver's seat (remembered between races)
+    this.fpv = new KartFPV(this, this.textures.get('kart-track').getSourceImage(), COLORS);
+    this.setView(state.kartView || 'top');
+    $('kart-cam').onclick = () => { audio.tap(); this.setView(this.view === 'top' ? 'driver' : 'top'); };
+    this.onKeyWas = input.onKey;
+    input.onKey = k => { if (k === 'v' || k === 'c') this.setView(this.view === 'top' ? 'driver' : 'top'); };
     music.play('race');
     this.events.once('shutdown', () => this.cleanup());
     hud.showTitle('LEVEL 5 KARTING', 'Moore Park · 3 laps');
     this.time.delayedCall(3200, () => hud.toast(isTouch() ? 'Point the joystick where you want to drive' : 'Arrow keys or WASD to drive', 3000));
+  }
+
+  setView(v) {
+    this.view = v; state.kartView = v;
+    this.fpv.show(v === 'driver');
+    this.cameras.main.setVisible(v !== 'driver');   // skip drawing the overhead view when hidden
+    $('kart-cam-label').textContent = v === 'driver' ? 'Driver' : 'Overhead';
   }
 
   applyZoom() {
@@ -68,7 +82,7 @@ export class KartScene extends Phaser.Scene {
     const row = Math.floor(slot / 2), col = slot % 2 ? 26 : -26;
     const i = (N - 4 - row * 3 - (slot % 2) * 1.5 + N) % N | 0, p = TRACK[i];
     const k = {
-      id, isPlayer, x: p.x + p.nx * col, y: p.y + p.ny * col, a: p.ang, v: 0, idx: i, laps: 0, half: false,
+      id, name: CHARACTERS[id].name, isPlayer, x: p.x + p.nx * col, y: p.y + p.ny * col, a: p.ang, v: 0, idx: i, laps: 0, half: false,
       skill: isPlayer ? 1 : 0.9 + Math.random() * 0.06, off: (Math.random() - 0.5) * 50, finished: false, time: 0, lapStart: 0, best: null, bump: 0,
     };
     k.body = this.add.image(k.x, k.y, key).setScale(0.5);
@@ -122,6 +136,8 @@ export class KartScene extends Phaser.Scene {
     m.g.gain.setTargetAtTime(on ? 0.012 + sp * 0.04 : 0, t, 0.08);
   }
   cleanup() {
+    this.fpv && this.fpv.show(false);
+    input.onKey = this.onKeyWas;
     if (this.motor) { try { this.motor.o.stop(); this.motor.o2.stop(); } catch { /* ok */ } this.motor.g.disconnect(); this.motor = null; }
     this.scale.off('resize', this.applyZoom, this);
     document.getElementById('app').classList.remove('karting');
@@ -165,6 +181,7 @@ export class KartScene extends Phaser.Scene {
     this.camT.x += (tx - this.camT.x) * ck; this.camT.y += (ty - this.camT.y) * ck;
     this.updateMotor();
     this.updateHud(delta);
+    if (this.view === 'driver') this.fpv.render(this.karts, this.player, time);
   }
 
   playerInput(k) {
@@ -199,6 +216,7 @@ export class KartScene extends Phaser.Scene {
 
   stepKart(k, inp, dt) {
     const max = MAX * k.skill;
+    k.steerIn = (k.steerIn || 0) + ((inp.steer || 0) - (k.steerIn || 0)) * Math.min(1, dt * 10);
     if (inp.gas) k.v += ACC * inp.gas * dt;
     if (inp.brake) k.v -= BRAKE * dt;
     if (!inp.gas && !inp.brake) k.v -= Math.sign(k.v) * Math.min(Math.abs(k.v), DRAG * dt);
@@ -309,6 +327,7 @@ export class KartScene extends Phaser.Scene {
   leave() {
     audio.bus();
     const back = state.returnMap || 'forestville';
+    this.fpv.show(false); this.cameras.main.setVisible(true);   // fades only run on a visible camera
     this.cameras.main.fadeOut(500, 20, 20, 24);
     this.cameras.main.once('camerafadeoutcomplete', () => { this.save.player.map = back; writeSave(this.save); this.scene.start('world', { map: back, arrive: 'kart' }); });
   }

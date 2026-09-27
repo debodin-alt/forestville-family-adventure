@@ -266,6 +266,11 @@ h2 { font-size: clamp(30px, 8vw, 44px); }
 .kart-box { margin-left: auto; display: grid; justify-items: end; gap: 1px; padding: 8px 12px; border-radius: 14px; background: rgba(20, 22, 27, .78); color: #fff; font-variant-numeric: tabular-nums; }
 .kart-box b { font-size: 18px; } .kart-box span { font-size: 14px; } .kart-box small { font-size: 11px; color: #39d98a; font-weight: 800; }
 .kart-leave { pointer-events: auto; }
+.kart-fpv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; display: block; }
+.kart-cam { pointer-events: auto; min-height: 48px; padding: 5px 14px; border-radius: 14px; border: 2px solid rgba(255, 255, 255, .5); background: rgba(20, 22, 27, .78); color: #fff; display: grid; justify-items: center; transition: transform .08s; }
+.kart-cam:active { transform: scale(.94); }
+.kart-cam span { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; font-weight: 700; }
+.kart-cam b { font-size: 15px; }
 .kart-lights { position: absolute; z-index: 9; left: 50%; top: 30%; transform: translateX(-50%); display: flex; gap: 10px; padding: 12px 14px; border-radius: 16px; background: #15171b; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
 .kart-lights i { width: 34px; height: 34px; border-radius: 50%; background: #3a1414; box-shadow: inset 0 0 0 3px #2a2c31; transition: background .08s; }
 .kart-lights i.on { background: #ff3b30; box-shadow: 0 0 18px #ff3b30, inset 0 0 0 3px #2a2c31; }

@@ -54,6 +54,7 @@ This is a fictionalised version of the indoor electric-kart track on the top lev
 - The track has an F1-style layout, tyre walls, red-and-white kerbs, concrete pillars and LED ceiling strips.
 - The race starts with five red lights, and you race three laps against the family.
 - Touch: point the joystick where you want to drive. Keyboard: arrows or WASD. Space honks.
+- Camera button (or V) switches between the overhead view and a first-person driver's seat, with a pseudo-3D floor, tyre walls, pillars, LED ceiling and a steering wheel.
 - Best lap, wins and a podium photo are saved.
 
 ## Sound on iPhone
