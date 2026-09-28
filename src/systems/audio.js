@@ -178,7 +178,7 @@ class AudioSystem {
   // ---------- birds (called by the ambience scheduler or near wildlife) ----------
   bird(kind) {
     if (!this.ok) return;
-    if (!this.birdBus) { this.birdBus = this.ctx.createGain(); this.birdBus.gain.value = 2.4; this.birdBus.connect(this.master); }
+    if (!this.birdBus) { this.birdBus = this.ctx.createGain(); this.birdBus.gain.value = 1.4; this.birdBus.connect(this.master); }
     this.route = this.birdBus;
     try { this.birdCall(kind); } finally { this.route = null; }
   }
@@ -216,11 +216,11 @@ class AudioSystem {
     else if (zone === 'village') { src.buffer = this.brown; f.type = 'lowpass'; f.frequency.value = 260; }
     else { src.buffer = this.noise; f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.5; }
     src.connect(f);
-    const level = c.createGain(); level.gain.value = { bush: 0.09, beach: 0.45, village: 0.35, suburb: 0.05 }[zone];
+    const level = c.createGain(); level.gain.value = { bush: 0.045, beach: 0.22, village: 0.16, suburb: 0.025 }[zone];
     f.connect(level).connect(g);
     if (zone === 'beach') { // slow swell like waves arriving
       const lfo = c.createOscillator(), lg = c.createGain();
-      lfo.frequency.value = 0.12; lg.gain.value = 0.22;
+      lfo.frequency.value = 0.12; lg.gain.value = 0.1;
       lfo.connect(lg).connect(level.gain); lfo.start();
     }
     src.start();
