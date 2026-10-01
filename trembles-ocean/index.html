@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Trembles — Ripping Ocean</title>
+<style>
+  html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#e9dfc8; }
+  canvas { display:block; width:100vw; height:100vh; touch-action:none; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Animated black-ink ocean drawing on warm paper"></canvas>
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d", { alpha: false });
+
+  const params = new URLSearchParams(location.search);
+  const seedText = params.get("seed");
+  let seed = seedText === null
+    ? ((Date.now() ^ (performance.now() * 1e6)) >>> 0)
+    : hashString(seedText);
+
+  function hashString(s) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(a) {
+    return function() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const rng = mulberry32(seed);
+  const R = (a=0, b=1) => a + (b-a) * rng();
+
+  let W=0,H=0,DPR=1;
+  function resize() {
+    DPR = Math.min(2, devicePixelRatio || 1);
+    W = innerWidth; H = innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  addEventListener("resize", resize, {passive:true});
+  resize();
+
+  const bands = [];
+  const BAND_COUNT = 19;
+  for (let i=0;i<BAND_COUNT;i++) {
+    const depth = i/(BAND_COUNT-1);
+    bands.push({
+      depth,
+      y: 0.26 + depth*0.70 + R(-0.014,0.014),
+      amp: R(7,24) * (0.35 + depth*0.95),
+      freq: R(0.005,0.013) * (0.9 + depth*0.5),
+      speed: R(0.45,0.95) * (rng()<0.5?-1:1),
+      phase: R(0,Math.PI*2),
+      jag: R(0.35,1.15),
+      tear: R(0.15,0.82),
+      weight: R(0.55,1.45) * (0.55 + depth*0.95)
+    });
+  }
+
+  const scars = Array.from({length: 34}, () => ({
+    x: R(-0.1,1.1), y:R(0.28,0.98),
+    len:R(0.03,0.18), tilt:R(-0.7,0.7),
+    phase:R(0,Math.PI*2), rate:R(0.05,0.17),
+    weight:R(0.4,1.4)
+  }));
+
+  const spray = Array.from({length: 190}, () => ({
+    x:R(0,1), y:R(0.19,0.8), r:R(0.35,1.45),
+    a:R(0.10,0.55), drift:R(-1,1), p:R(0,6.28)
+  }));
+
+  const paperSpecks = Array.from({length: 700}, () => ({
+    x:R(0,1), y:R(0,1), a:R(0.015,0.07), r:R(0.15,0.8)
+  }));
+
+  const inkFlecks = Array.from({length: 280}, () => ({
+    x:R(0,1), y:R(0.20,0.98), r:R(0.45,2.2),
+    a:R(0.18,0.92), drift:R(-1,1), phase:R(0,6.28)
+  }));
+
+  const slashMarks = Array.from({length: 120}, () => ({
+    x:R(-0.05,1.05), y:R(0.24,0.98), len:R(8,34),
+    ang:R(-1.2,1.2), a:R(0.12,0.40), w:R(0.7,2.4),
+    phase:R(0,6.28), speed:R(0.15,0.5)
+  }));
+
+  function hash1(n) {
+    n = Math.sin(n * 127.1 + seed*0.000001) * 43758.5453123;
+    return n - Math.floor(n);
+  }
+  function smoothNoise(x) {
+    const i = Math.floor(x), f = x-i;
+    const u = f*f*(3-2*f);
+    return hash1(i)*(1-u) + hash1(i+1)*u;
+  }
+  function fbm(x) {
+    let v=0, a=0.5, f=1;
+    for(let o=0;o<4;o++){ v += a*smoothNoise(x*f); f*=2.03; a*=0.5; }
+    return v;
+  }
+
+  const PAPER = "#eadfc5";
+  const INK = "#050403";
+  let paused = false;
+  let t0 = performance.now(), frozenAt = 0, frozenTotal = 0;
+
+  function ink(alpha=1) {
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = INK;
+    ctx.fillStyle = INK;
+  }
+
+  function paper() {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0,0,W,H);
+    for (const s of paperSpecks) {
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function waveY(b, x, time) {
+    const px = x/W;
+    const base = b.y*H;
+    const long = Math.sin(x*b.freq + b.phase + time*b.speed) * b.amp;
+    const rough = (fbm(px*18 + b.phase*3 + time*0.18) - 0.5) * b.amp * b.jag;
+    const cross = Math.sin(x*b.freq*2.7 - time*b.speed*1.9 + b.phase*0.7) * b.amp*0.34;
+    const heave = Math.sin(time*0.55 + b.phase*0.35) * (2.5 + b.depth*6.5);
+    return base + long + rough + cross + heave;
+  }
+
+  function drawBand(b, time) {
+    const step = Math.max(4, W/220);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    for (let pass=0; pass<3; pass++) {
+      ink(0.48 + pass*0.16);
+      ctx.lineWidth = b.weight * (pass===1 ? 2.3 : 0.95);
+      ctx.beginPath();
+      let started=false;
+      for (let x=-20; x<=W+20; x+=step) {
+        const y = waveY(b, x, time + pass*0.19)
+          + Math.sin(x*0.037 + pass*9.2 + b.phase) * (1.1 + b.depth*2.3);
+        if (!started){ ctx.moveTo(x,y); started=true; }
+        else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+
+    const localRng = mulberry32((seed ^ ((b.depth*1e6)|0)) >>> 0);
+    const count = 12 + Math.floor(b.depth*20);
+    for (let j=0;j<count;j++) {
+      const x = localRng()*W;
+      const y = waveY(b,x,time);
+      const n = Math.sin(j*7.19 + b.phase + time*0.11);
+      if (n < 0.05 - b.tear) continue;
+
+      const len = (7 + localRng()*34) * (0.5+b.depth);
+      const ang = -1.1 + localRng()*2.2;
+      ink(0.12 + localRng()*0.33);
+      ctx.lineWidth = 0.35 + localRng()*1.15;
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      ctx.lineTo(
+        x + Math.cos(ang)*len,
+        y - Math.abs(Math.sin(ang))*len*(0.4+localRng())
+      );
+      ctx.stroke();
+    }
+  }
+
+  function drawRips(time) {
+    for (const s of scars) {
+      const x = s.x*W + Math.sin(time*s.rate+s.phase)*8;
+      const y = s.y*H + Math.cos(time*s.rate*0.7+s.phase)*5;
+      const len = s.len*W;
+      const dx = Math.cos(s.tilt)*len;
+      const dy = Math.sin(s.tilt)*len*0.42;
+
+      ink(0.16);
+      ctx.lineWidth = s.weight;
+      ctx.beginPath();
+      ctx.moveTo(x-dx*0.5, y-dy*0.5);
+      const segs = 9;
+      for(let i=1;i<=segs;i++){
+        const q=i/segs;
+        const jx=(fbm(i*1.7+s.phase)-0.5)*14;
+        const jy=(fbm(i*2.4+s.phase+11)-0.5)*11;
+        ctx.lineTo(x-dx*0.5+dx*q+jx, y-dy*0.5+dy*q+jy);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawFoam(time) {
+    const horizon = H*0.23;
+    for (let i=0;i<7;i++) {
+      const y = horizon + i*H*0.105;
+      const shift = Math.sin(time*0.34+i)*W*0.055;
+      for(let x=-W*0.1; x<W*1.1; x+=22+i*2){
+        const n = fbm((x+shift)*0.013 + i*5.7 + time*0.14);
+        if(n<0.50) continue;
+        const yy = y + (n-0.5)*70 + Math.sin(x*0.02+i)*9;
+
+        ink(0.21 + i*0.014);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x,yy);
+        ctx.quadraticCurveTo(x+7,yy-10-n*8,x+16,yy+Math.sin(x*0.071+i*3.1)*2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawSpray(time) {
+    for (const p of spray) {
+      const pulse = 0.5 + 0.5*Math.sin(time*0.75 + p.p);
+      const x = p.x*W + Math.sin(time*0.28+p.p)*p.drift*24;
+      const y = p.y*H - pulse*7;
+      ink(p.a * (0.35+0.65*pulse));
+      ctx.beginPath();
+      ctx.arc(x,y,p.r*(0.7+pulse*0.65),0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawHorizon(time) {
+    const y = H*0.235;
+    ink(0.52);
+    ctx.lineWidth = 1.15;
+    for(let k=0;k<4;k++){
+      ctx.beginPath();
+      for(let x=0;x<=W;x+=5){
+        const yy = y + Math.sin(x*0.009+k*1.7+time*0.18)*3
+                     + (fbm(x*0.007+k*8)-0.5)*10 + k*2.2;
+        x===0 ? ctx.moveTo(x,yy) : ctx.lineTo(x,yy);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawAccents(time) {
+    for (const p of inkFlecks) {
+      const lift = Math.sin(time*0.25 + p.phase) * 3;
+      const sway = Math.sin(time*0.42 + p.phase) * p.drift * 6;
+      const depthBoost = 0.45 + p.y * 0.9;
+      ink(Math.min(1, p.a * depthBoost));
+      ctx.beginPath();
+      ctx.arc(p.x*W + sway, p.y*H + lift, p.r * (0.8 + 0.4*depthBoost), 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    ctx.lineCap = "round";
+    for (const m of slashMarks) {
+      const x = m.x*W + Math.sin(time*m.speed + m.phase) * 8;
+      const y = m.y*H + Math.cos(time*m.speed*0.7 + m.phase) * 4;
+      const dx = Math.cos(m.ang) * m.len;
+      const dy = Math.sin(m.ang) * m.len * 0.55;
+      ink(m.a * (0.55 + m.y));
+      ctx.lineWidth = m.w;
+      ctx.beginPath();
+      ctx.moveTo(x - dx*0.5, y - dy*0.5);
+      ctx.lineTo(x + dx*0.5, y + dy*0.5);
+      ctx.stroke();
+    }
+
+    for (let i = bands.length - 1; i >= Math.max(0, bands.length - 6); i--) {
+      const b = bands[i];
+      ink(0.20 + (i - (bands.length - 6)) * 0.03);
+      ctx.lineWidth = 1.8 + (i - (bands.length - 6)) * 0.25;
+      ctx.beginPath();
+      let started = false;
+      for (let x = -10; x <= W + 10; x += 7) {
+        const y = waveY(b, x, time) + 7 + (fbm(x*0.03 + i*9.3) - 0.5) * 7;
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawFrame(time) {
+    paper();
+    drawHorizon(time);
+    for (const b of bands) drawBand(b,time);
+    drawRips(time);
+    drawFoam(time);
+    drawSpray(time);
+    drawAccents(time);
+
+    ink(0.52);
+    ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    ctx.textBaseline = "bottom";
+    const pulseMark = paused ? "" : "  " + ["·","•","●","•"][Math.floor(time*2)%4];
+    ctx.fillText(paused ? "TAP / SPACE — RESUME" : "TAP / SPACE — FREEZE" + pulseMark, 16, H-14);
+    ctx.globalAlpha = 1;
+  }
+
+  function nowTime(ms){
+    return (ms - t0 - frozenTotal) / 1000;
+  }
+
+  function frame(ms) {
+    if (!paused) drawFrame(nowTime(ms));
+    requestAnimationFrame(frame);
+  }
+
+  function togglePause() {
+    if (!paused) {
+      paused = true;
+      frozenAt = performance.now();
+      drawFrame(nowTime(frozenAt));
+    } else {
+      frozenTotal += performance.now() - frozenAt;
+      paused = false;
+    }
+  }
+
+  addEventListener("keydown", (e) => {
+    if (e.code !== "Space") return;
+    e.preventDefault();
+    togglePause();
+  });
+
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    togglePause();
+  }, {passive:false});
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
