@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Flow Ribbons</title>
+<style>
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #eadfc8;
+  }
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d", { alpha: false });
+
+  const PAPER = "#eadfc8";
+  const INK = "#080706";
+  const TAU = Math.PI * 2;
+
+  const params = new URLSearchParams(location.search);
+  const seedParam = params.get("seed");
+  const seed = seedParam == null ? ((Date.now() ^ (performance.now() * 1e6)) >>> 0) : hashString(seedParam);
+
+  function hashString(str) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(a) {
+    return function() {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const rng = mulberry32(seed);
+  const R = (a = 0, b = 1) => a + (b - a) * rng();
+
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", resize, { passive: true });
+  resize();
+
+  function hash3(ix, iy, iz) {
+    let h = seed ^ Math.imul(ix, 374761393) ^ Math.imul(iy, 668265263) ^ Math.imul(iz, 2147483647);
+    h = (h ^ (h >>> 13)) >>> 0;
+    h = Math.imul(h, 1274126177);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967295;
+  }
+
+  function smooth(t) {
+    return t * t * (3 - 2 * t);
+  }
+
+  function noise3(x, y, z) {
+    const x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math.floor(z);
+    const x1 = x0 + 1, y1 = y0 + 1, z1 = z0 + 1;
+
+    const tx = smooth(x - x0);
+    const ty = smooth(y - y0);
+    const tz = smooth(z - z0);
+
+    const c000 = hash3(x0, y0, z0);
+    const c100 = hash3(x1, y0, z0);
+    const c010 = hash3(x0, y1, z0);
+    const c110 = hash3(x1, y1, z0);
+    const c001 = hash3(x0, y0, z1);
+    const c101 = hash3(x1, y0, z1);
+    const c011 = hash3(x0, y1, z1);
+    const c111 = hash3(x1, y1, z1);
+
+    const x00 = c000 * (1 - tx) + c100 * tx;
+    const x10 = c010 * (1 - tx) + c110 * tx;
+    const x01 = c001 * (1 - tx) + c101 * tx;
+    const x11 = c011 * (1 - tx) + c111 * tx;
+
+    const y0m = x00 * (1 - ty) + x10 * ty;
+    const y1m = x01 * (1 - ty) + x11 * ty;
+
+    return y0m * (1 - tz) + y1m * tz;
+  }
+
+  function fbm3(x, y, z) {
+    let sum = 0;
+    let amp = 0.5;
+    let freq = 1.0;
+    for (let i = 0; i < 4; i++) {
+      sum += amp * noise3(x * freq, y * freq, z * freq);
+      freq *= 2.0;
+      amp *= 0.5;
+    }
+    return sum;
+  }
+
+  const grain = Array.from({ length: 1200 }, () => ({
+    x: R(0, 1),
+    y: R(0, 1),
+    r: R(0.2, 1.0),
+    a: R(0.015, 0.07)
+  }));
+
+  const threads = [];
+  const THREADS_PER_EDGE = 180;
+
+  function buildThreads() {
+    threads.length = 0;
+
+    for (let i = 0; i < THREADS_PER_EDGE; i++) {
+      threads.push({
+        edge: "left",
+        t: (i + R(-0.3, 0.3)) / THREADS_PER_EDGE,
+        inset: R(-0.04, 0.02),
+        step: R(3.0, 6.0),
+        steps: Math.floor(R(70, 150)),
+        width: R(0.25, 1.15),
+        phase: R(0, TAU),
+        drift: R(0.05, 0.22),
+        bend: R(-0.55, 0.55),
+        nudge: R(0.1, 0.9),
+        alpha: R(0.14, 0.36)
+      });
+    }
+
+    for (let i = 0; i < THREADS_PER_EDGE; i++) {
+      threads.push({
+        edge: "right",
+        t: (i + R(-0.3, 0.3)) / THREADS_PER_EDGE,
+        inset: R(-0.02, 0.04),
+        step: R(3.0, 6.0),
+        steps: Math.floor(R(70, 150)),
+        width: R(0.25, 1.15),
+        phase: R(0, TAU),
+        drift: R(0.05, 0.22),
+        bend: R(-0.55, 0.55),
+        nudge: R(0.1, 0.9),
+        alpha: R(0.14, 0.36)
+      });
+    }
+  }
+
+  buildThreads();
+
+  function paintPaper() {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, W, H);
+
+    for (const g of grain) {
+      ctx.globalAlpha = g.a;
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.arc(g.x * W, g.y * H, g.r, 0, TAU);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  function flowAngle(x, y, time, sideBias) {
+    const nx = x * 0.0027;
+    const ny = y * 0.0027;
+    const nz = time * 0.06;
+
+    const n1 = fbm3(nx, ny, nz);
+    const n2 = fbm3(nx * 1.9 + 11.2, ny * 1.9 - 7.4, nz + 13.7);
+
+    let angle = (n1 - 0.5) * Math.PI * 1.8;
+    angle += (n2 - 0.5) * 0.9;
+    angle += sideBias;
+
+    const towardCenter = Math.atan2(H * 0.5 - y, W * 0.5 - x);
+    angle = angle * 0.72 + towardCenter * 0.28;
+
+    return angle;
+  }
+
+  function drawThread(spec, time) {
+    let x = spec.edge === "left" ? spec.inset * W : W - spec.inset * W;
+    let y = spec.t * H;
+    y += Math.sin(time * spec.drift + spec.phase) * 10;
+
+    const sideBias = spec.edge === "left" ? 0.0 : Math.PI;
+    let px = x;
+    let py = y;
+
+    for (let i = 0; i < spec.steps; i++) {
+      const u = i / (spec.steps - 1);
+      const a = flowAngle(x, y, time + spec.phase * 0.1, sideBias)
+        + spec.bend * 0.12
+        + Math.sin(u * Math.PI * 2 + spec.phase + time * 0.3) * 0.08;
+
+      const step = spec.step * (0.9 + 0.25 * Math.sin(spec.phase + u * Math.PI * 3));
+      x += Math.cos(a) * step;
+      y += Math.sin(a) * step;
+
+      if (x < -60 || x > W + 60 || y < -60 || y > H + 60) break;
+
+      const taper = 0.2 + 0.85 * Math.pow(Math.sin(u * Math.PI), 0.85);
+      const flutter = 0.75 + 0.35 * noise3(x * 0.02, y * 0.02, time * 0.4 + spec.nudge);
+      const lw = Math.max(0.12, spec.width * taper * flutter);
+      const alpha = spec.alpha * (0.75 + 0.35 * taper);
+
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = INK;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = lw;
+
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+
+      if ((i % 11 === 0) && taper > 0.45) {
+        ctx.globalAlpha = alpha * 0.45;
+        ctx.lineWidth = lw * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(px + Math.sin(spec.phase + i) * 0.7, py + Math.cos(spec.phase + i * 0.7) * 0.7);
+        ctx.lineTo(x + Math.cos(spec.phase + i) * 0.7, y + Math.sin(spec.phase + i * 0.5) * 0.7);
+        ctx.stroke();
+      }
+
+      px = x;
+      py = y;
+    }
+  }
+
+  function draw(time) {
+    paintPaper();
+    for (let pass = 0; pass < 2; pass++) {
+      for (const t of threads) {
+        drawThread(t, time + pass * 0.18);
+      }
+    }
+
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = INK;
+    ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(paused ? "TAP / SPACE — RESUME" : "TAP / SPACE — FREEZE", 16, H - 14);
+    ctx.globalAlpha = 1;
+  }
+
+  let paused = false;
+  let t0 = performance.now();
+  let frozenAt = 0;
+  let frozenAccum = 0;
+
+  function simTime(ms) {
+    return (ms - t0 - frozenAccum) / 1000;
+  }
+
+  function frame(ms) {
+    if (!paused) draw(simTime(ms));
+    requestAnimationFrame(frame);
+  }
+
+  function togglePause() {
+    if (!paused) {
+      paused = true;
+      frozenAt = performance.now();
+      draw(simTime(frozenAt));
+    } else {
+      paused = false;
+      frozenAccum += performance.now() - frozenAt;
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code !== "Space") return;
+    e.preventDefault();
+    togglePause();
+  });
+
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    togglePause();
+  }, { passive: false });
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
