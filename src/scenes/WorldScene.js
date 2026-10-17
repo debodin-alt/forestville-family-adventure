@@ -422,19 +422,26 @@ export class WorldScene extends Phaser.Scene {
 
   // A comic speech bubble above a character (catch cheers etc.)
   bubble(text, critter, accent) {
-    if (this.bubbleObj) this.bubbleObj.destroy();
-    const t = this.add.text(0, 0, text, { fontFamily: 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif', fontSize: '17px', fontStyle: '900', color: '#2c3f31', align: 'center', wordWrap: { width: 190 } }).setOrigin(0.5);
-    const w = t.width + 26, h = t.height + 16;
+    if (this.bubbleObj) { this.bubbleObj.destroy(); this.bubbleFollow && this.bubbleFollow.remove(); }
+    const t = this.add.text(0, 0, text, { fontFamily: 'ui-rounded, "SF Pro Rounded", "Avenir Next", system-ui, sans-serif', fontSize: '22px', fontStyle: '900', color: '#2c3f31', align: 'center', wordWrap: { width: 210 }, resolution: 2 }).setOrigin(0.5);
+    const name = this.add.text(0, 0, CHARACTERS[critter.id]?.name || '', { fontFamily: 'ui-rounded, system-ui, sans-serif', fontSize: '12px', fontStyle: '800', color: '#ffffff', backgroundColor: accent || '#c2643d', padding: { x: 7, y: 2 }, resolution: 2 }).setOrigin(0.5);
+    const w = Math.max(t.width + 32, 90), h = t.height + 26;
+    name.setPosition(-w / 2 + name.width / 2 + 10, -h / 2);
     const g = this.add.graphics();
-    g.fillStyle(0x3a2a22, 0.25).fillRoundedRect(-w / 2 + 2, -h / 2 + 4, w, h, 14);
-    g.fillStyle(0xfff8ea, 1).fillRoundedRect(-w / 2, -h / 2, w, h, 14);
-    g.lineStyle(3, accent ? Phaser.Display.Color.HexStringToColor(accent).color : 0xc2643d, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
-    g.fillStyle(0xfff8ea, 1).fillTriangle(-8, h / 2 - 1, 8, h / 2 - 1, 0, h / 2 + 10);
-    const box = this.add.container(critter.x, critter.y - 150, [g, t]).setDepth(9.8e5).setScale(0.2);
+    g.fillStyle(0x3a2a22, 0.28).fillRoundedRect(-w / 2 + 3, -h / 2 + 5, w, h, 18);
+    g.fillStyle(0xfffdf6, 1).fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    g.lineStyle(4, accent ? Phaser.Display.Color.HexStringToColor(accent).color : 0xc2643d, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, 18);
+    g.fillStyle(0xfffdf6, 1).fillTriangle(-10, h / 2 - 2, 10, h / 2 - 2, 0, h / 2 + 14);
+    g.lineStyle(4, accent ? Phaser.Display.Color.HexStringToColor(accent).color : 0xc2643d, 1).beginPath().moveTo(-10, h / 2).lineTo(0, h / 2 + 14).lineTo(10, h / 2).strokePath();
+    const zoom = this.cameras.main.zoom / state.dpr;
+    const box = this.add.container(critter.x, critter.y - 150, [g, t, name]).setDepth(9.8e5).setScale(0.2 / zoom);
     this.bubbleObj = box;
-    this.tweens.add({ targets: box, scale: 1, duration: 260, ease: 'Back.easeOut' });
-    const follow = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (box.scene) box.setPosition(critter.x, critter.y + critter.sink - 150); } });
-    this.time.delayedCall(2200, () => { follow.remove(); if (box.scene) this.tweens.add({ targets: box, alpha: 0, y: box.y - 20, duration: 300, onComplete: () => box.destroy() }); });
+    // pop in with a little bounce, then a gentle wobble
+    this.tweens.add({ targets: box, scale: 1 / zoom, duration: 300, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: box, angle: { from: -3, to: 3 }, duration: 260, yoyo: true, repeat: 3, delay: 300 });
+    this.bubbleFollow = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (box.scene) box.setPosition(critter.x, critter.y + critter.sink - 150 - h / 2); } });
+    const life = Math.max(2800, 900 + text.length * 70);
+    this.time.delayedCall(life, () => { this.bubbleFollow && this.bubbleFollow.remove(); if (box.scene) this.tweens.add({ targets: box, alpha: 0, y: box.y - 24, duration: 320, onComplete: () => box.destroy() }); });
   }
 
   spot(id) {

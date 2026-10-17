@@ -157,7 +157,7 @@ export class Ambient {
     }
     // gulls on the sand
     for (let i = 0; i < 6; i++) {
-      const a = this.addAnimal(`gull${i}`, 'gull', 200 + this.r() * 1400, 640 + this.r() * 360, { frames: [1], fps: 1, oy: 0.8 });
+      const a = this.addAnimal(`gull${i}`, 'gull', 200 + this.r() * 1400, 640 + this.r() * 360, { frames: [2, 2, 2, 3, 2, 3], fps: 1.4, oy: 0.96 });
       a.mode = 'gull'; this.gulls.push(a);
     }
     this.tufts(20, (x, y) => m.surfaceAt(x, y) === 'leaves' || m.surfaceAt(x, y) === 'grass');
@@ -179,7 +179,7 @@ export class Ambient {
     for (let i = 0; i < 60; i++) this.sparkleAt(this.r() * m.w, 80 + this.r() * 600);
     this.addAnimal('ibisH', 'ibis', 1290, 930, { frames: [0, 2, 0, 1], fps: 2, mode: 'wander' });
     this.addAnimal('ibisG', 'ibis', 2150, 1250, { frames: [0, 2, 0, 1], fps: 2, mode: 'wander' });
-    for (let i = 0; i < 5; i++) { const a = this.addAnimal(`hg${i}`, 'gull', 300 + this.r() * 1500, 760 + this.r() * 160, { frames: [1], fps: 1, oy: 0.8 }); a.mode = 'gull'; a.home = { x: a.x, y: a.y }; }
+    for (let i = 0; i < 5; i++) { const a = this.addAnimal(`hg${i}`, 'gull', 300 + this.r() * 1500, 760 + this.r() * 160, { frames: [2, 2, 3, 2, 2, 3], fps: 1.4, oy: 0.96 }); a.mode = 'gull'; a.home = { x: a.x, y: a.y }; }
     this.gullZone = [300, 760, 1500, 160];
     this.tufts(30, (x, y) => m.surfaceAt(x, y) === 'grass');
     this.butterfliesAround([[2100, 1450], [2500, 1500], [2300, 1200]]);
@@ -216,7 +216,7 @@ export class Ambient {
       } else if (a.mode === 'gull') {
         const pd = player ? Math.hypot(player.x - a.x, player.y - a.y) : 999;
         if (pd < 90 && !a.flying) { a.flying = true; a.frames = [0, 1]; a.fps = 8; a.vx = (a.x > player.x ? 1 : -1) * 160; a.vy = -120; audio.bird('gull'); }
-        if (a.flying) { a.x += a.vx * sec; a.y += a.vy * sec; a.spr.setDepth(9e5); a.spr.setFlipX(a.vx < 0); if (a.y < -60 || a.x < -60 || a.x > this.map.w + 60) { a.flying = false; const z = this.gullZone || [200, 640, 1400, 360]; a.x = z[0] + Math.random() * z[2]; a.y = z[1] + Math.random() * z[3]; a.frames = [1]; a.fps = 1; a.spr.setDepth(a.y); } }
+        if (a.flying) { a.x += a.vx * sec; a.y += a.vy * sec; a.spr.setDepth(9e5); a.spr.setFlipX(a.vx < 0); if (a.y < -60 || a.x < -60 || a.x > this.map.w + 60) { a.flying = false; const z = this.gullZone || [200, 640, 1400, 360]; a.x = z[0] + Math.random() * z[2]; a.y = z[1] + Math.random() * z[3]; a.frames = [2, 2, 3, 2]; a.fps = 1.4; a.t = Math.random() * 3000; a.spr.setDepth(a.y); } }
         else if (Math.random() < 0.004) { a.x += (Math.random() - 0.5) * 20; a.spr.setFlipX(Math.random() < 0.5); a.spr.setDepth(a.y); }
       }
       a.spr.setPosition(a.x, a.y);

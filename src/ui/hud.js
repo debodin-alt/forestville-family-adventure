@@ -3,6 +3,7 @@
 import { speakerInfo, FAMILY, CHARACTERS } from '../data/characters.js';
 import { paintPortrait } from '../art/critters.js';
 import { audio } from '../systems/audio.js';
+import { voice } from '../systems/voice.js';
 import { paintFish } from '../art/fish.js';
 import { FISH, SEA_LIFE } from '../data/fish.js';
 import { loadPhotos } from '../systems/photos.js';
@@ -23,7 +24,7 @@ const VERB_LABEL = { talk: 'Talk', examine: 'Look', collect: 'Take', activate: '
 export const hud = {
   lines: [], typing: null, onDone: null, full: '', shown: 0, lastBlip: 0,
 
-  init({ onSwitch, onMute, onReset, onMusic, onCamera, getSave }) {
+  init({ onSwitch, onMute, onReset, onMusic, onCamera, getSave, onVoices }) {
     this.getSave = getSave;
     this.el = {
       chapter: $('chapter-label'), quest: $('quest-label'), pips: $('feather-pips'),
@@ -39,6 +40,8 @@ export const hud = {
       flash: $('flash'),
     };
     this.el.musicToggle.addEventListener('click', () => onMusic());
+    this.el.voicesToggle = $('voices-toggle');
+    this.el.voicesToggle.addEventListener('click', () => onVoices());
     this.el.camera.addEventListener('click', () => onCamera());
     this.el.albumBtn.addEventListener('click', () => { this.openMenu(false); this.openAlbum(true); });
     this.el.closeAlbum.addEventListener('click', () => this.openAlbum(false));
@@ -69,6 +72,11 @@ export const hud = {
     this.el.resetBtn.addEventListener('click', () => { this.el.resetConfirm.hidden = false; this.el.resetBtn.hidden = true; });
     this.el.resetNo.addEventListener('click', () => { this.el.resetConfirm.hidden = true; this.el.resetBtn.hidden = false; });
     this.el.resetYes.addEventListener('click', () => { onReset(); });
+  },
+
+  setVoices(on) {
+    this.el.voicesToggle.textContent = on ? 'Voices: on' : 'Voices: off';
+    this.el.voicesToggle.setAttribute('aria-pressed', String(on));
   },
 
   setMusic(on) {
@@ -213,6 +221,7 @@ export const hud = {
   next() {
     const line = this.lines.shift();
     if (!line) {
+      voice.stop();
       this.el.dlg.classList.remove('show');
       this.el.app.classList.remove('talking');
       this.typing = null;
@@ -230,6 +239,9 @@ export const hud = {
     this.el.dlg.classList.toggle('narration', who === 'sign');
     this.el.dlg.classList.add('show');
     this.full = text; this.shown = 0; this.el.dlgText.textContent = '';
+    // characters speak their lines out loud (narration stays silent)
+    this.spoken = voice.enabled && voice.supported() && who !== 'sign';
+    if (this.spoken) voice.say(who, text); else voice.stop();
     this.typing = true;
     this.el.dlg.classList.remove('done');
   },
@@ -240,7 +252,7 @@ export const hud = {
     const n = Math.min(this.full.length, Math.floor(this.shown));
     if (n !== this.el.dlgText.textContent.length) {
       this.el.dlgText.textContent = this.full.slice(0, n);
-      if (this.voice && n - this.lastBlip >= 3 && /\w/.test(this.full[n - 1] || '')) { audio.blip(this.voice); this.lastBlip = n; }
+      if (this.voice && !this.spoken && n - this.lastBlip >= 3 && /\w/.test(this.full[n - 1] || '')) { audio.blip(this.voice); this.lastBlip = n; }
     }
     if (n >= this.full.length) { this.typing = 'done'; this.lastBlip = 0; this.el.dlg.classList.add('done'); }
   },

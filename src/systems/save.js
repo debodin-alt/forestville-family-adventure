@@ -22,7 +22,7 @@ export function freshSave() {
       ch4: { unlocked: false, arrived: false, busk: false, fish: false, photo: false, done: false },
     },
     world: { areasSeen: [], talked: {}, items: { rod: false, snorkel: false }, fish: {}, kart: { best: null, wins: 0, races: 0 } },
-    settings: { muted: false, music: true },
+    settings: { muted: false, music: true, voices: true },
     meta: { created: now, updated: now, migratedFrom: null },
   };
 }
@@ -63,6 +63,7 @@ export function normalize(raw) {
   s.world.talked = isObj(w.talked) ? Object.fromEntries(Object.entries(w.talked).filter(([k, v]) => typeof v === 'number').slice(0, 100)) : {};
   s.settings.muted = bool(raw.settings?.muted, false);
   s.settings.music = bool(raw.settings?.music, true);
+  s.settings.voices = bool(raw.settings?.voices, true);
   const it = isObj(w.items) ? w.items : {};
   s.world.items = { rod: bool(it.rod, false), snorkel: bool(it.snorkel, false) || bool(it.rod, false) };   // old rod saves get the snorkel gear
   s.world.divedOnce = bool(w.divedOnce, false);

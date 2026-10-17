@@ -526,13 +526,34 @@ export const ANIMALS = {
     ellipse(ctx, 32.5, 13, 1.8, 1.6, '#e5412f');
     ctx.fillStyle = '#2f8f3b'; ctx.beginPath(); ctx.moveTo(10, 15); ctx.lineTo(1, 18); ctx.lineTo(10, 18); ctx.fill();
   }),
-  gull: () => frameSet(40, 26, 2, (ctx, i) => {
-    const up = i === 0;
-    ellipse(ctx, 20, 14, 10, 5, '#fbfbf8');
-    ctx.strokeStyle = '#9aa3aa'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(20, 13); ctx.quadraticCurveTo(10, up ? 2 : 20, 2, up ? 6 : 18); ctx.moveTo(20, 13); ctx.quadraticCurveTo(30, up ? 2 : 20, 38, up ? 6 : 18); ctx.stroke();
-    ellipse(ctx, 29, 12, 4, 3.5, '#fbfbf8');
-    ctx.fillStyle = '#e5412f'; ctx.fillRect(32, 12, 4, 1.6);
+  // frames 0-1: flying (wings up / down), 2: standing, 3: pecking at the sand
+  gull: () => frameSet(40, 32, 4, (ctx, i) => {
+    if (i < 2) {
+      const up = i === 0;
+      ellipse(ctx, 20, 14, 10, 5, '#fbfbf8');
+      ctx.strokeStyle = '#9aa3aa'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(20, 13); ctx.quadraticCurveTo(10, up ? 2 : 20, 2, up ? 6 : 18); ctx.moveTo(20, 13); ctx.quadraticCurveTo(30, up ? 2 : 20, 38, up ? 6 : 18); ctx.stroke();
+      ellipse(ctx, 29, 12, 4, 3.5, '#fbfbf8');
+      ctx.fillStyle = '#e5412f'; ctx.fillRect(32, 12, 4, 1.6);
+      return;
+    }
+    const peck = i === 3;
+    // legs
+    ctx.strokeStyle = '#e0803a'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(17, 21); ctx.lineTo(16, 30); ctx.moveTo(22, 21); ctx.lineTo(23, 30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(13.5, 30.5); ctx.lineTo(18, 30.5); ctx.moveTo(21, 30.5); ctx.lineTo(25.5, 30.5); ctx.stroke();
+    // tail + body + folded wing
+    ctx.fillStyle = '#2b2b2e'; ctx.beginPath(); ctx.moveTo(8, 15); ctx.lineTo(3, 13); ctx.lineTo(7, 18); ctx.closePath(); ctx.fill();
+    ellipse(ctx, 18, 16, 11, 6.5, '#fbfbf8');
+    ellipse(ctx, 15, 14.5, 8, 4, '#a7afb5', -0.15);
+    ctx.fillStyle = '#2b2b2e'; ctx.beginPath(); ctx.moveTo(7, 14); ctx.lineTo(11, 13); ctx.lineTo(9, 16.5); ctx.closePath(); ctx.fill();
+    // neck + head
+    const hx = peck ? 30 : 27, hy = peck ? 20 : 8;
+    ctx.strokeStyle = '#fbfbf8'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(24, 14); ctx.lineTo(hx - 1, hy + 2); ctx.stroke();
+    ellipse(ctx, hx, hy, 4.6, 4.2, '#fbfbf8');
+    ellipse(ctx, hx + 1.2, hy - 0.8, 1.1, 1.1, '#1b1b1b');
+    ctx.fillStyle = '#f2c230'; ctx.beginPath(); ctx.moveTo(hx + 3.5, hy - 0.5); ctx.lineTo(hx + 9, hy + (peck ? 3 : 0.8)); ctx.lineTo(hx + 3.5, hy + 1.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e5412f'; ctx.fillRect(hx + 6, hy + (peck ? 1.6 : 0.4), 1.6, 1.2);
   }),
   pelican: () => frameSet(52, 48, 2, (ctx, i) => {
     ctx.strokeStyle = '#8c8f94'; ctx.lineWidth = 2.4;

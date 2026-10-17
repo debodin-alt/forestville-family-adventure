@@ -227,6 +227,12 @@ class AudioSystem {
     return { g };
   }
 
+  // lower the ambience while someone is speaking so the words are clear
+  duckAmbience(on) {
+    if (!this.ctx || !this.zone || !this.beds[this.zone]) return;
+    this.beds[this.zone].g.gain.setTargetAtTime(on ? 0.3 : 1, this.ctx.currentTime, 0.15);
+  }
+
   setZone(zone) {
     if (!this.ctx) { this.pendingZone = zone; return; }
     if (zone === this.zone) return;

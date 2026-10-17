@@ -9,6 +9,7 @@ import { WorldScene } from './scenes/WorldScene.js';
 import { KartScene } from './scenes/KartScene.js';
 import { FAMILY } from './data/characters.js';
 import { music } from './systems/music.js';
+import { voice } from './systems/voice.js';
 import { daylight } from './systems/daylight.js';
 
 const $ = id => document.getElementById(id);
@@ -30,6 +31,7 @@ if (hasProgress) $('start-note').textContent = `${state.save.quests.ch1.feathers
 
 function setMuted(m) {
   state.save.settings.muted = m;
+  voice.setEnabled(!m && state.save.settings.voices);
   audio.setMuted(m);
   hud.setMuted(m);
   writeSave(state.save);
@@ -42,8 +44,17 @@ function setMusic(on) {
   writeSave(state.save);
 }
 
+function setVoices(on) {
+  state.save.settings.voices = on;
+  voice.setEnabled(on);
+  hud.setVoices(on);
+  writeSave(state.save);
+  if (on) { voice.unlock(); voice.say(state.save.player.who, 'Voices on!'); }
+}
+
 hud.init({
   getSave: () => state.save,
+  onVoices: () => setVoices(!state.save.settings.voices),
   onMusic: () => setMusic(!state.save.settings.music),
   onCamera: () => state.scene?.takePhoto(),
   onSwitch: id => state.scene?.switchTo(id),
@@ -55,6 +66,9 @@ hud.init({
 });
 hud.setMuted(state.save.settings.muted);
 hud.setMusic(state.save.settings.music);
+voice.init();
+voice.setEnabled(state.save.settings.voices && !state.save.settings.muted);
+hud.setVoices(state.save.settings.voices);
 music.setEnabled(state.save.settings.music);
 daylight.init($('tint'));
 
@@ -103,7 +117,7 @@ function boot() {
   addEventListener('resize', resizeGame);
   addEventListener('orientationchange', () => setTimeout(resizeGame, 250));
   // audio needs a gesture on iOS; re-arm on any tap
-  addEventListener('pointerdown', () => { audio.unlock(); music.retry(); }, { passive: true });
+  addEventListener('pointerdown', () => { audio.unlock(); music.retry(); voice.unlock(); }, { passive: true });
   addEventListener('keydown', () => { audio.unlock(); music.retry(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) state.scene?.persist(true); });
 }
@@ -112,7 +126,7 @@ function boot() {
 function startSoon() {
   if (state.game || state.starting) return;
   state.starting = true;
-  audio.unlock();
+  audio.unlock(); voice.unlock();
   const b = $('start-button');
   b.textContent = 'Setting the scene…'; b.disabled = true;
   requestAnimationFrame(() => setTimeout(boot, 30));
