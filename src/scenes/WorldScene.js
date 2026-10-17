@@ -626,9 +626,10 @@ export class WorldScene extends Phaser.Scene {
     if (!this.sixAt) this.sixAt = 6000 + Math.random() * 6000;
     if ((j.idleMs || 0) > this.sixAt && Math.hypot(j.x - this.player.x, j.y - this.player.y) < 600) {
       this.sixAt = 0; j.idleMs = 0;
-      j.sixSeven(2400);
-      this.bubble(Math.random() < 0.5 ? '6… 7!' : 'Six… SEVEN!', j, '#6f54a8');
-      this.time.delayedCall(150, () => voice.say('jessia', 'six... seven!', { interrupt: false }));
+      j.sixSeven(3000);
+      this.bubble('6-seeeeveeeeeennnnn!', j, '#6f54a8');
+      // a short, snappy "six" then a long, stretched "seven"
+      this.time.delayedCall(120, () => voice.sayParts('jessia', [{ text: 'Six!', rate: 1.25 }, { text: 'seven', rate: 0.32, pitch: 1.08 }]));
     }
   }
 
