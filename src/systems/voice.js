@@ -8,7 +8,7 @@ import { audio } from './audio.js';
 const STYLE = {
   dan:     { pitch: 0.85, rate: 0.98, prefer: 'male' },
   finn:    { pitch: 1.75, rate: 1.08, prefer: 'female' },
-  jessia:  { pitch: 1.65, rate: 1.16, prefer: 'female' },   // cute and a little quick
+  jessia:  { pitch: 1.95, rate: 1.16, prefer: 'female' },   // cute and a little quick
   jarency: { pitch: 1.05, rate: 0.98, prefer: 'female' },
   bev:     { pitch: 0.95, rate: 0.92, prefer: 'female' },
   mo:      { pitch: 0.9,  rate: 1.0,  prefer: 'male' },
