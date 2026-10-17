@@ -22,6 +22,7 @@ import { writeSave } from '../systems/save.js';
 import { objective, buildInteractables, onEnterMap, onFeatherCollected, talkTo, onMove, onSpot, onCatch } from '../systems/quests.js';
 import { hud } from '../ui/hud.js';
 import { state } from '../state.js';
+import { voice } from '../systems/voice.js';
 
 const MAPS = { forestville, manly, harbour };
 const THEME = { forestville: 'forestville', manly: 'manly', harbour: 'harbour' };
@@ -613,8 +614,22 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.ambient.update(dt, time, p, this.cameras.main);
+    this.maybeSixSeven(locked);
 
     if (this.moved && time - this.lastSave > 5000) { this.moved = false; this.persist(); }
+  }
+
+  // Jessia randomly does the "6-7" when she's been standing still for a bit.
+  maybeSixSeven(locked) {
+    const j = this.player.id === 'jessia' ? this.player : this.family.jessia;
+    if (!j || j.emoting || j.water || locked) return;
+    if (!this.sixAt) this.sixAt = 6000 + Math.random() * 6000;
+    if ((j.idleMs || 0) > this.sixAt && Math.hypot(j.x - this.player.x, j.y - this.player.y) < 600) {
+      this.sixAt = 0; j.idleMs = 0;
+      j.sixSeven(2400);
+      this.bubble(Math.random() < 0.5 ? '6… 7!' : 'Six… SEVEN!', j, '#6f54a8');
+      this.time.delayedCall(150, () => voice.say('jessia', 'six... seven!', { interrupt: false }));
+    }
   }
 
   // ---------- water: wading, swimming, ripples, splashes ----------

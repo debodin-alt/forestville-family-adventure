@@ -43,6 +43,8 @@ function smile(ctx, x, y, w = 3, open = false) {
 }
 
 // ---------- humanoid critter (everyone except Finn) ----------
+let EMOTE = null;   // set while painting emote frames
+
 function drawHumanoid(ctx, id, dir, frame) {
   const c = CHARACTERS[id];
   const sp = c.species;
@@ -160,6 +162,17 @@ function drawHumanoid(ctx, id, dir, frame) {
     ellipse(ctx, cx + 1 - lp * 5, armY + 2, 4.5, 7.5, armC, -lp * 0.35);
     ellipse(ctx, cx + 1 - lp * 6, armY + 8, 3.6, 3.2, c.fur);
     if (id === 'dan') { rrect(ctx, cx + 1 - lp * 6 + 1, armY + 2, 6, 8, 1.5, '#f3ead8'); ctx.fillStyle = '#6b4a33'; ctx.fillRect(cx + 1 - lp * 6 + 1, armY + 2, 6, 2.2); }
+  } else if (EMOTE !== null && dir === 'down') {
+    // the "6-7": elbows out, palms up, hands bobbing like a see-saw
+    const up = EMOTE === 0 ? [-9, 5] : [5, -9];
+    [-1, 1].forEach((sd, k) => {
+      const hx2 = cx + sd * (trx + 9), hy2 = armY + up[k];
+      ctx.strokeStyle = armC; ctx.lineWidth = 7; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx + sd * (trx - 2), armY - 2); ctx.quadraticCurveTo(cx + sd * (trx + 6), armY + 6, hx2, hy2 + 2); ctx.stroke();
+      ellipse(ctx, hx2, hy2, 6, 3.2, c.furLight);                         // open palm
+      ctx.fillStyle = c.furLight; for (let f = -1; f <= 1; f++) ellipse(ctx, hx2 + sd * 3.5 + f * 1.6, hy2 - 2.2, 1.1, 1.8, c.furLight);
+      ctx.strokeStyle = 'rgba(58,42,34,.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(hx2, hy2, 5, 2.8, 0, 0, Math.PI); ctx.stroke();
+    });
   } else {
     const sL = lp * 2.2, sR = -lp * 2.2;
     ellipse(ctx, cx - trx - 1, armY + sL, 4.5, 7.5, armC, 0.25);
@@ -430,6 +443,14 @@ export function paintCritterFrame(id, dir, frame) {
     if (id === 'finn') drawGoose(ctx, dir, frame);
     else drawHumanoid(ctx, id, dir, frame);
   }, FW * ART, FH * ART, undefined, 1.3 * ART);
+}
+
+// Two-frame "6-7" gesture strip (front view), same frame size as the sheet.
+export function paintSixSevenFrames(id) {
+  const [c, ctx] = makeCanvas(FW * ART * 2, FH * ART);
+  for (const k of [0, 1]) { EMOTE = k; ctx.drawImage(paintCritterFrame(id, 'down', 'idle0'), k * FW * ART, 0); }
+  EMOTE = null;
+  return c;
 }
 
 // Full sprite sheet: rows = DIRS, cols = FRAMES.

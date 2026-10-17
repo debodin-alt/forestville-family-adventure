@@ -1,7 +1,7 @@
 // Animated character: idle/walk, three facings (side is mirrored), blink,
 // squash & stretch, soft shadow, and y-sorted depth.
 
-import { ART, FW, FH, GROUND, DIRS, FRAMES, paintCritterSheet } from '../art/critters.js';
+import { ART, FW, FH, GROUND, DIRS, FRAMES, paintCritterSheet, paintSixSevenFrames } from '../art/critters.js';
 import { CHARACTERS } from '../data/characters.js';
 import { addCritterFrames } from '../art/assets.js';
 
@@ -53,6 +53,21 @@ export class Critter {
   update(dt, vx = 0, vy = 0, time = 0) {
     const speed = Math.hypot(vx, vy);
     const moving = speed > 12;
+    if (this.emoting) {
+      if (moving || this.water) { this.endEmote(); }
+      else {
+        this.emoting = Math.max(0, this.emoting - dt);
+        const f = Math.floor(this.emoting / 230) % 2;
+        if (f !== this.emoteFrame) { this.emoteFrame = f; this.sprite.setTexture(this.emoteKey, f); }
+        if (!this.emoting) this.endEmote();
+        this.phase += dt * 0.012;
+        const s2 = Math.sin(this.phase * 2);
+        this.sprite.setScale(this.base * (1 - s2 * 0.02), this.base * (1 + s2 * 0.03));
+        this.sync();
+        return;
+      }
+    }
+    this.idleMs = moving ? 0 : (this.idleMs || 0) + dt;
     if (moving) this.face(vx, vy);
     if (moving !== this.moving || this.lastDir !== this.dir) {
       this.moving = moving; this.lastDir = this.dir;
@@ -79,6 +94,24 @@ export class Critter {
     this.hopY = hopY;
     this.sync();
     this.shadow.setScale(1 - (moving ? Math.abs(Math.sin(this.phase * 2)) * 0.08 : 0) + hopY * 0.01, 1);
+  }
+
+  // Jessia's "6-7" hand-gesture emote (front-facing, palms up, see-sawing)
+  sixSeven(ms = 2400) {
+    const key = `six-${this.id}`;
+    if (!this.scene.textures.exists(key)) {
+      const tex = this.scene.textures.addCanvas(key, paintSixSevenFrames(this.id));
+      tex.add(0, 0, 0, 0, FW * ART, FH * ART); tex.add(1, 0, FW * ART, 0, FW * ART, FH * ART);
+    }
+    this.sprite.stop();
+    this.dir = 'down'; this.flip = false; this.sprite.setFlipX(false);
+    this.emoting = ms; this.emoteKey = key; this.emoteFrame = -1;
+  }
+
+  endEmote() {
+    this.emoting = 0;
+    this.sprite.setTexture(this.key, `${this.dir}-idle0`);
+    this.moving = false; this.lastDir = null; this.idleMs = 0;
   }
 
   jump() { if (!this.water) this.hop = 260; }
