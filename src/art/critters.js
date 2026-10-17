@@ -223,14 +223,12 @@ function drawHumanoid(ctx, id, dir, frame) {
   }
 
   // eyes
-  const eyeR = sp === 'possum' ? 3.2 : 2.4;
+  const eyeR = sp === 'possum' ? 3.2 : sp === 'rabbit' ? 2.8 : 2.4;
   if (side) {
     eye(ctx, fx, hy - 2, eyeR, blink);
-    if (sp === 'rabbit' && !blink) lid(ctx, fx, hy - 2, eyeR, c.fur);
   } else {
     eye(ctx, hx - 6.5, hy - 2, eyeR, blink);
     eye(ctx, hx + 6.5, hy - 2, eyeR, blink);
-    if (sp === 'rabbit' && !blink) { lid(ctx, hx - 6.5, hy - 2, eyeR, c.fur); lid(ctx, hx + 6.5, hy - 2, eyeR, c.fur); }
     ellipse(ctx, hx - 11, hy + 5, 3.2, 2, BLUSH);
     ellipse(ctx, hx + 11, hy + 5, 3.2, 2, BLUSH);
   }
@@ -243,8 +241,14 @@ function drawHumanoid(ctx, id, dir, frame) {
     ctx.stroke();
   }
   // mouths
+  if (side && sp === 'rabbit') smile(ctx, fx + 9, hy + 6, 2.4, true);
   if (!side) {
-    if (sp === 'rabbit') { ctx.strokeStyle = INK; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(hx, hy + 5); ctx.lineTo(hx, hy + 7); ctx.moveTo(hx - 2.5, hy + 8.3); ctx.quadraticCurveTo(hx, hy + 6.5, hx + 2.5, hy + 8.3); ctx.stroke(); }
+    if (sp === 'rabbit') {
+      // big happy smile with two little buck teeth
+      ctx.fillStyle = '#b8434f'; ctx.beginPath(); ctx.moveTo(hx - 4.2, hy + 7); ctx.quadraticCurveTo(hx, hy + 13.5, hx + 4.2, hy + 7); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.9, hy + 7, 1.7, 2.4); ctx.fillRect(hx + 0.2, hy + 7, 1.7, 2.4);
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(hx, hy + 5); ctx.lineTo(hx, hy + 7); ctx.moveTo(hx - 4.4, hy + 7); ctx.quadraticCurveTo(hx, hy + 13.8, hx + 4.4, hy + 7); ctx.stroke();
+    }
     else if (sp === 'wombat' || sp === 'koala') smile(ctx, hx, hy + 11, 2.5);
     else smile(ctx, hx, hy + 9, 2.8, id === 'dan');
   }

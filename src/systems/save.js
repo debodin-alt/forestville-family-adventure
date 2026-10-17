@@ -64,7 +64,8 @@ export function normalize(raw) {
   s.settings.muted = bool(raw.settings?.muted, false);
   s.settings.music = bool(raw.settings?.music, true);
   const it = isObj(w.items) ? w.items : {};
-  s.world.items = { rod: bool(it.rod, false), snorkel: bool(it.snorkel, false) };
+  s.world.items = { rod: bool(it.rod, false), snorkel: bool(it.snorkel, false) || bool(it.rod, false) };   // old rod saves get the snorkel gear
+  s.world.divedOnce = bool(w.divedOnce, false);
   const kt = isObj(w.kart) ? w.kart : {};
   s.world.kart = { best: num(kt.best, null), wins: Math.max(0, num(kt.wins, 0)), races: Math.max(0, num(kt.races, 0)) };
   s.world.fish = {};

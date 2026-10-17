@@ -6,7 +6,7 @@ import { makeCanvas } from '../utils/canvas.js';
 import { ANIMALS, FW, FH, ART, DIRS, FRAMES } from './critters.js';
 
 // Bump this whenever any painter in src/art or a map's paintGround/buildProps changes.
-export const ART_VERSION = '3.0.0';
+export const ART_VERSION = '3.1.0';
 
 export const CHUNK = 1024;
 export const SCALABLE = new Set(['gum', 'roundTree', 'shrub', 'fern', 'grassTree', 'rock', 'norfolkPine', 'fig']);

@@ -49,9 +49,10 @@ export class Collision {
 
   pointBlocked(x, y) {
     if (x < 8 || y < 8 || x > this.w - 8 || y > this.h - 8) return true;
-    for (const s of this.global) if (hit(s, x, y)) return true;
+    // while swimming (snorkel diving) deep-water blockers are ignored
+    for (const s of this.global) if (!(this.swim && s.water) && hit(s, x, y)) return true;
     const cell = this.grid.get(Math.floor(x / CELL) + ',' + Math.floor(y / CELL));
-    if (cell) for (const s of cell) if (hit(s, x, y)) return true;
+    if (cell) for (const s of cell) if (!(this.swim && s.water) && hit(s, x, y)) return true;
     return false;
   }
 

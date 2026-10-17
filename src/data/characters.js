@@ -16,7 +16,7 @@ export const CHARACTERS = {
   jessia: {
     name: 'Jessia', species: 'rabbit', speed: 160, voice: 300,
     fur: '#d9cfc5', furLight: '#f4eee8', outfit: '#6f54a8', outfit2: '#553f85',
-    blurb: 'Teenager. Guitar. Deadpan.',
+    blurb: 'Teenager. Guitar. Big laugh.',
   },
   jarency: {
     name: 'Jarency', species: 'cheetah', speed: 165, voice: 240,

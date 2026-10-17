@@ -211,15 +211,16 @@ export const LINES = {
 export const MORE = {
   shedFirst: c => [
     ['sign', 'The garden shed. Smells like sunscreen, two-stroke and old cricket pads.'],
-    ['sign', 'Leaning in the corner: the family fishing rod.'],
-    [c.who, c.who === 'finn' ? 'I promise not to catch any ducks.' : 'Right. Let’s see what’s biting.'],
-    ['sign', 'Stand at the edge of any water, face it, and press the button to cast. When the float plunges under, press again!'],
+    ['sign', 'Hanging on a hook: four snorkels, four masks and a bucket of flippers.'],
+    [c.who, c.who === 'finn' ? 'I promise not to grab any ducks.' : 'Right. Let’s go see what’s swimming around.'],
+    ['sign', 'Face any water (the pond, the creek, the surf, the harbour) and press the button to DIVE IN!'],
+    ['sign', 'In the water, look for bubbles, a splash or a fin. Swim over and press the button to grab it. Then let it go!'],
   ],
   shedAgain: [['sign', 'Garden shed. The mower is judging you.']],
   kezSnorkel: [
     ['kez', 'Reckon you lot deserve a snorkel after all that. Cabbage Tree Bay, right off Shelly Beach.'],
     ['kez', 'It’s an aquatic reserve, so look but don’t touch. Groper, wobbegongs, cuttlefish, the lot.'],
-    ['kez', 'Here, masks and snorkels from the surf club. Just swim out from Shelly.'],
+    ['kez', 'Got your masks? Ripper. Just swim out from Shelly.'],
   ],
   kezSnorkelAgain: c => [['kez', `Spotted ${c.q.ch3.spotted.length} so far? The groper usually hangs round the middle of the bay.`]],
   ch3Done: [
@@ -239,7 +240,7 @@ export const MORE = {
     ['dan', 'You brought the guitar.'],
     ['jessia', '…Fine.'],
   ],
-  rodSpare: [['dan', 'Brought the rod from the shed, just in case.']],
+  rodSpare: [['dan', 'Brought the snorkels from the shed. Wharf dive, anyone?']],
   busk: c => c.who === 'dan'
     ? [['jessia', 'Don’t sing.'], ['sign', 'Dan sings. Jessia sighs, then joins in on harmonies. It’s… actually lovely.'], ['sign', 'A tourist drops a two-dollar coin in the case. A gull tries to take it.']]
     : c.who === 'jessia'
@@ -256,6 +257,26 @@ export const MORE = {
     ['finn', 'GOOSE EMERGENCY!'],
   ],
   ibisHarbour: [['ibis', '…'], ['sign', 'A city ibis. It has clearly seen things.']],
+};
+
+// What each character shouts when they hold up a catch.
+export const CATCH_LINES = {
+  dan: ['Awww yeah!', 'Get in! Look at this beauty!', 'Dad’s still got it!', 'Now THAT’S a fish!'],
+  finn: ['HONK HONK! Got one!', 'Yahoo!', 'Best. Goose. EVER!', 'Fish friend! Hello!'],
+  jessia: ['Yesss! Got it!', 'No way! Did everyone see that?!', 'Woo! I’m amazing at this!', 'Hehe, gotcha!'],
+  jarency: ['Woohoo! Gotcha!', 'Yes! Mum’s still got it!', 'Ooh, look at you, gorgeous!', 'Ta-daaa!'],
+};
+export const JUNK_LINES = {
+  dan: ['Well. That’s not a fish.', 'Found it! …What is it?'],
+  finn: ['It’s not a fish but I LOVE it!', 'Treasure!!'],
+  jessia: ['Ew. But also… cool?', 'Okay, that counts. Kind of.'],
+  jarency: ['Into the bin you go, after the photo.', 'Cleaning up the waterways! Woo!'],
+};
+export const MISS_LINES = {
+  dan: ['Aw, slippery little thing!', 'Next time, mate.'],
+  finn: ['Come back! I just want to say hi!', 'HONK! Too fast!'],
+  jessia: ['Nooo! So close!', 'It literally waved at me.'],
+  jarency: ['Ooh, cheeky! Missed it.', 'Too quick for me!'],
 };
 
 // Family chatter for later in the game (after Chapter 2 at home, and at the harbour).

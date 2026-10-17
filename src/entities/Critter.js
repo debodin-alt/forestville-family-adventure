@@ -88,19 +88,20 @@ export class Critter {
     if (level === this.water) return;
     this.water = level;
     const goose = this.id === 'finn';
-    this.sinkTarget = level === 0 ? 0 : level === 1 ? 13 : goose ? 26 : 44;
+    this.sinkTarget = level === 0 ? 0 : level === 1 ? 13 : goose ? 24 : 30;
     this.shadow.setVisible(level === 0 && this.sprite.visible);
   }
 
   sync() {
     if (this.sink !== this.sinkTarget) {
       this.sink += Math.sign(this.sinkTarget - this.sink) * Math.min(Math.abs(this.sinkTarget - this.sink), 2.2);
-      const cut = Math.round(this.sink * ART);
+      const cut = Math.min(Math.round(this.sink * ART), GROUND * ART - 2);
       if (cut > 0) this.sprite.setCrop(0, 0, FW * ART, GROUND * ART - cut);
       else this.sprite.isCropped = false;
+      this.sprite.setAlpha(this.sink > 90 ? 0 : 1);   // fully under water
     }
     const bob = this.water === 2 ? Math.sin(this.phase * 1.3) * 1.5 : 0;
-    this.sprite.setPosition(this.x, this.y + (this.hopY || 0) + this.sink + bob);
+    this.sprite.setPosition(this.x, this.y + (this.hopY || 0) + (this.extraY || 0) + this.sink + bob);
     this.sprite.setDepth(this.y);
     this.shadow.setPosition(this.x, this.y - 1).setDepth(this.y - 2);
   }

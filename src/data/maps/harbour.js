@@ -101,7 +101,7 @@ export function buildProps() {
 }
 
 export function colliders() {
-  return [{ fn: (x, y) => !onLand(x, y) }];
+  return [{ water: true, fn: (x, y) => !onLand(x, y) }];
 }
 
 export function surfaceAt(x, y) {

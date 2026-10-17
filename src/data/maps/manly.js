@@ -142,7 +142,7 @@ const seaDepth = (x, y) => (inPoly(x, y, LAND) ? 0 : distToPolyline(x, y, LAND_E
 export function colliders(opts = {}) {
   return [
     // wade up to ~55px into the surf; deeper only with snorkel gear inside the bay
-    { fn: (x, y) => { const d = seaDepth(x, y); return d > 55 && !(opts.canSwim && opts.canSwim() && inBay(x, y)); } },
+    { water: true, fn: (x, y) => { const d = seaDepth(x, y); return d > 55 && !(opts.canSwim && opts.canSwim() && inBay(x, y)); } },
     { rect: [2560, 110, 150, 12] },     // lookout railing edge
     { rect: [W - 30, 0, 30, 640] },    // cliff edge
   ];

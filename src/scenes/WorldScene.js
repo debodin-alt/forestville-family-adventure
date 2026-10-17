@@ -420,6 +420,23 @@ export class WorldScene extends Phaser.Scene {
 
   afterCatch(water) { onCatch(this.api, water); }
 
+  // A comic speech bubble above a character (catch cheers etc.)
+  bubble(text, critter, accent) {
+    if (this.bubbleObj) this.bubbleObj.destroy();
+    const t = this.add.text(0, 0, text, { fontFamily: 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif', fontSize: '17px', fontStyle: '900', color: '#2c3f31', align: 'center', wordWrap: { width: 190 } }).setOrigin(0.5);
+    const w = t.width + 26, h = t.height + 16;
+    const g = this.add.graphics();
+    g.fillStyle(0x3a2a22, 0.25).fillRoundedRect(-w / 2 + 2, -h / 2 + 4, w, h, 14);
+    g.fillStyle(0xfff8ea, 1).fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+    g.lineStyle(3, accent ? Phaser.Display.Color.HexStringToColor(accent).color : 0xc2643d, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+    g.fillStyle(0xfff8ea, 1).fillTriangle(-8, h / 2 - 1, 8, h / 2 - 1, 0, h / 2 + 10);
+    const box = this.add.container(critter.x, critter.y - 150, [g, t]).setDepth(9.8e5).setScale(0.2);
+    this.bubbleObj = box;
+    this.tweens.add({ targets: box, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    const follow = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (box.scene) box.setPosition(critter.x, critter.y + critter.sink - 150); } });
+    this.time.delayedCall(2200, () => { follow.remove(); if (box.scene) this.tweens.add({ targets: box, alpha: 0, y: box.y - 20, duration: 300, onComplete: () => box.destroy() }); });
+  }
+
   spot(id) {
     const fresh = onSpot(this.api, id);
     audio.spot(); haptic.light();
@@ -444,6 +461,7 @@ export class WorldScene extends Phaser.Scene {
 
   switchTo(id) {
     if (id === this.player.id || hud.talking || this.busy || !this.family[id]) return;
+    if (this.fishing.swimming || this.fishing.busy) { hud.toast('Swim back to shore first!'); return; }
     const old = this.player, next = this.family[id];
     delete this.family[id];
     old.wander = 28; old.home = { x: old.x, y: old.y }; old.target = null;
@@ -490,10 +508,12 @@ export class WorldScene extends Phaser.Scene {
         if (dist < 110 && dist < bd) { bd = dist; best = { id: `spot-${cr.id}`, verb: 'spot', label: this.save.quests.ch3.spotted.includes(cr.id) ? SEA_LIFE[cr.id].name : 'Something’s down there', x: cr.x, y: cr.y, markerH: 30, spot: cr.id }; }
       }
     }
-    // fishing: only when nothing else is in reach
-    if (!best) {
-      const f = this.fishing.spot();
-      if (f) best = { id: `fish-${f.water}`, verb: 'fish', label: f.water === 'reserve' ? 'Marine reserve' : 'Cast a line', x: f.x, y: f.y, markerH: 26, fish: f };
+    // snorkel fishing: grab a clue while swimming, or dive in from the edge
+    const clue = this.fishing.nearClue();
+    if (clue) best = { id: `grab-${clue.x | 0}`, verb: 'grab', label: 'Grab it!', x: clue.x, y: clue.y, markerH: 34, clue };
+    if (!best && !this.fishing.swimming) {
+      const f = this.fishing.canDive();
+      if (f) best = { id: `dive-${f.water}`, verb: 'dive', label: f.water === 'reserve' ? 'Dive in (reserve)' : 'Dive in!', x: f.x, y: f.y, markerH: 26, dive: f };
     }
     return best;
   }
@@ -512,9 +532,10 @@ export class WorldScene extends Phaser.Scene {
     this.glowT -= dt;
     if (this.glowT <= 0) { this.glowT = 900; const a = daylight.dark * 0.85; for (const g of this.glows) g.setAlpha(a); }
     if (this.talkingWas !== hud.talking) { this.talkingWas = hud.talking; music.setDuck(hud.talking); }
-    const fishing = this.fishing.active;
+    const fishing = this.fishing.busy;   // mid-dive or mid-grab
     const locked = hud.talking || hud.menuOpen || hud.endingOpen || hud.albumOpen || this.busy || fishing;
     hud.el.app.classList.toggle('fishing', fishing);
+    this.fishing.update(dt);
 
     // NPCs
     const blocked = (x, y) => this.collision.blocked(x, y) || Math.hypot(this.player.x - x, (this.player.y - y) * 1.7) < 24;
@@ -525,14 +546,13 @@ export class WorldScene extends Phaser.Scene {
 
     let mx = 0, my = 0;
     if (fishing) {
-      this.fishing.update(dt);
-      if (takeAction()) { if (hud.talking) hud.advance(); else this.fishing.press(); }
+      if (takeAction() && hud.talking) hud.advance();
     } else if (locked) {
       if (takeAction()) hud.advance();
     } else {
       [mx, my] = readMove();
     }
-    const sp = CHARACTERS[this.player.id].speed;
+    const sp = CHARACTERS[this.player.id].speed * (this.fishing.swimming ? 0.8 : 1);
     const k = 1 - Math.exp(-dt * 0.018);
     this.vel.x += (mx * sp - this.vel.x) * k;
     this.vel.y += (my * sp - this.vel.y) * k;
@@ -540,7 +560,8 @@ export class WorldScene extends Phaser.Scene {
     if (Math.abs(this.vel.y) < 1 && !my) this.vel.y = 0;
     const p = this.player;
     const ox = p.x, oy = p.y;
-    const [nx, ny] = this.collision.move(p.x, p.y, this.vel.x * dt / 1000, this.vel.y * dt / 1000, this.bumpCheck);
+    let nx = p.x, ny = p.y;
+    if (!fishing) [nx, ny] = this.collision.move(p.x, p.y, this.vel.x * dt / 1000, this.vel.y * dt / 1000, this.bumpCheck);
     p.x = nx; p.y = ny;
     const moved = Math.hypot(nx - ox, ny - oy);
     p.update(dt, moved > 0.2 ? (nx - ox) / dt * 1000 : 0, moved > 0.2 ? (ny - oy) / dt * 1000 : 0, time);
@@ -550,7 +571,7 @@ export class WorldScene extends Phaser.Scene {
       if (this.stepDist > 34) {
         this.stepDist = 0;
         const surf = this.map.surfaceAt(p.x, p.y);
-        audio.step(surf === 'deep' ? 'swim' : surf);
+        audio.step(surf === 'deep' || this.fishing.swimming ? 'swim' : surf);
         if (p.water) this.splash(p.x, p.y, p.water === 2 ? 3 : 4);
       }
       onMove(this.api, p.x, p.y);
@@ -578,7 +599,8 @@ export class WorldScene extends Phaser.Scene {
     if (!locked && takeAction() && near) {
       audio.tap();
       if (near.talk) { const c = near.critter; c.faceToward(p.x, p.y); p.faceToward(c.x, c.y); talkTo(this.api, near.talk); }
-      else if (near.fish) this.fishing.start(near.fish);
+      else if (near.dive) this.fishing.dive(near.dive);
+      else if (near.clue) this.fishing.grab(near.clue);
       else if (near.spot) this.spot(near.spot);
       else { p.faceToward(near.x, near.y); near.run(); }
     }
@@ -624,8 +646,8 @@ export class WorldScene extends Phaser.Scene {
   updateWater(dt, moving) {
     const p = this.player;
     const surf = this.map.surfaceAt(p.x, p.y);
-    const lvl = surf === 'deep' ? 2 : surf === 'water' ? 1 : 0;
-    if (lvl !== p.water) {
+    const lvl = this.fishing.swimming && (surf === 'water' || surf === 'deep') ? 2 : surf === 'deep' ? 2 : surf === 'water' ? 1 : 0;
+    if (lvl !== p.water && !this.fishing.busy) {
       if (lvl > p.water) { this.splash(p.x, p.y, 10, true); audio.splash(lvl === 2); }
       else if (lvl === 0) audio.step('water');
       p.setWater(lvl);
@@ -639,7 +661,7 @@ export class WorldScene extends Phaser.Scene {
       this.rippleT -= dt;
       if (this.rippleT <= 0) { this.rippleT = moving ? 260 : 1100; this.ripple(p.x, p.y + 2, p.water === 2 ? 1.2 : 0.9); }
     }
-    const snorkel = p.water === 2;
+    const snorkel = p.water === 2 && p.sink < 60;
     if (snorkel !== this.underwater) { this.underwater = snorkel; music.play(snorkel ? 'underwater' : THEME[this.mapId]); }
     this.mask.setVisible(snorkel);
     if (snorkel) {

@@ -76,8 +76,8 @@ export function onEnterMap(S) {
     S.delay(900, () => S.say(LINES.manlyArrive, () => { q.ch2.arrived = true; S.persist(); S.refresh(); S.chime(); }));
   }
   if (S.mapId === 'harbour' && !q.ch4.arrived) {
-    const extra = S.save.world.items.rod ? [] : MORE.rodSpare;
-    S.delay(900, () => S.say([...MORE.harbourArrive, ...extra], () => { q.ch4.arrived = true; S.save.world.items.rod = true; S.persist(); S.refresh(); S.chime(); }));
+    const extra = S.save.world.items.snorkel ? [] : MORE.rodSpare;
+    S.delay(900, () => S.say([...MORE.harbourArrive, ...extra], () => { q.ch4.arrived = true; S.save.world.items.rod = true; S.save.world.items.snorkel = true; S.persist(); S.refresh(); S.chime(); }));
   }
 }
 
@@ -174,9 +174,9 @@ export function buildInteractables(S) {
     add({
       id: 'shed', verb: 'examine', label: 'Garden shed', x: SPOTS.shed[0], y: SPOTS.shed[1] + 8, r: 80, markerH: 110,
       run: () => {
-        if (S.save.world.items.rod) return S.say(MORE.shedAgain);
+        if (S.save.world.items.snorkel) return S.say(MORE.shedAgain);
         S.creak();
-        S.say(MORE.shedFirst(S.ctx()), () => { S.save.world.items.rod = true; S.persist(); S.itemGet('the fishing rod'); });
+        S.say(MORE.shedFirst(S.ctx()), () => { S.save.world.items.rod = true; S.save.world.items.snorkel = true; S.persist(); S.itemGet('snorkels and masks'); });
       },
     });
 
@@ -246,7 +246,7 @@ export function talkTo(S, id) {
   }
   if (id === 'bev' && q.ch1.bev === 0) return S.say(NPC_TALK.bev(c), () => { q.ch1.bev = 1; S.persist(); S.refresh(); });
   if (id === 'kez' && q.ch2.done) {
-    if (!q.ch3.gear) return S.say(MORE.kezSnorkel, () => { q.ch3.gear = true; S.save.world.items.snorkel = true; S.persist(); S.refresh(); S.itemGet('snorkels and masks'); });
+    if (!q.ch3.gear) return S.say(MORE.kezSnorkel, () => { const had = S.save.world.items.snorkel; q.ch3.gear = true; S.save.world.items.snorkel = true; S.persist(); S.refresh(); if (!had) S.itemGet('snorkels and masks'); });
     if (!q.ch3.done) return S.say(MORE.kezSnorkelAgain(c));
   }
   if (id === 'jessia' && S.mapId === 'harbour' && q.ch4.arrived) {

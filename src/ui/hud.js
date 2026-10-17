@@ -18,7 +18,7 @@ function portrait(id, size = 96) {
 }
 export { portrait };
 
-const VERB_LABEL = { talk: 'Talk', examine: 'Look', collect: 'Take', activate: 'Use', travel: 'Travel', fish: 'Fish', spot: 'Spot' };
+const VERB_LABEL = { talk: 'Talk', examine: 'Look', collect: 'Take', activate: 'Use', travel: 'Travel', fish: 'Fish', spot: 'Spot', dive: 'Dive', grab: 'Grab' };
 
 export const hud = {
   lines: [], typing: null, onDone: null, full: '', shown: 0, lastBlip: 0,

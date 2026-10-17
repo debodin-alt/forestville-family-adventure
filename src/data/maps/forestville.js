@@ -286,7 +286,7 @@ export function buildProps() {
 export function colliders() {
   return [
     // the pond has a wadeable edge; only the middle is too deep
-    { ellipse: [G.pond.x, G.pond.y, G.pond.rx - 46, G.pond.ry - 40], except: G.jetty },
+    { ellipse: [G.pond.x, G.pond.y, G.pond.rx - 46, G.pond.ry - 40], except: G.jetty, water: true },
     { rect: [90, 0, 270, 50] },            // sandstone shelf
     { rect: [1640, 1432, 12, 968] }, { rect: [3180, 1432, 20, 968] }, // school side fences
     { rect: [180, 1404, 6, 796] },         // home west boundary

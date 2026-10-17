@@ -186,9 +186,14 @@ export class Ambient {
     this.lanes = [];
     // ferries crossing the harbour
     if (!this.scene.textures.exists('ferry-move')) this.scene.textures.addCanvas('ferry-move', paintFerry().canvas);
+    // ferries leave the Quay, go round Bennelong Point and out toward the Heads (staying on water)
+    this.ferryPath = [[1300, 345], [1820, 330], [1960, 175], [2300, 150], [3250, 150]];
+    const segs = []; let L = 0;
+    for (let i = 0; i < this.ferryPath.length - 1; i++) { const [ax, ay] = this.ferryPath[i], [bx, by] = this.ferryPath[i + 1]; const l = Math.hypot(bx - ax, by - ay); segs.push({ ax, ay, bx, by, l, s: L }); L += l; }
+    this.ferrySegs = segs; this.ferryLen = L;
     this.ferries = [0, 1].map(i => {
-      const f = this.scene.add.image(i ? 2900 : -300, i ? 330 : 180, 'ferry-move').setScale(1 / ART * 0.8).setDepth(-3300).setFlipX(!!i);
-      return { f, dir: i ? -1 : 1, v: 60 + i * 15 };
+      const f = this.scene.add.image(0, 0, 'ferry-move').setScale(1 / ART * 0.8).setDepth(-3300);
+      return { f, d: i ? L * 0.65 : 0, dir: i ? -1 : 1, v: 55 + i * 12, wait: 0 };
     });
   }
 
@@ -282,9 +287,15 @@ export class Ambient {
       }
     }
     if (this.ferries) for (const F of this.ferries) {
-      F.f.x += F.dir * F.v * sec;
-      if (F.f.x > this.map.w + 400) F.f.x = -400;
-      if (F.f.x < -400) F.f.x = this.map.w + 400;
+      if (F.wait > 0) { F.wait -= sec; } else {
+        F.d += F.dir * F.v * sec;
+        if (F.d >= this.ferryLen) { F.d = this.ferryLen; F.dir = -1; F.wait = 4; }   // off past the Heads, then back
+        if (F.d <= 0) { F.d = 0; F.dir = 1; F.wait = 6; }                              // docked at the Quay
+      }
+      const sg = this.ferrySegs.find(g => F.d <= g.s + g.l) || this.ferrySegs[this.ferrySegs.length - 1];
+      const k = (F.d - sg.s) / sg.l;
+      F.f.setPosition(sg.ax + (sg.bx - sg.ax) * k, sg.ay + (sg.by - sg.ay) * k);
+      F.f.setFlipX((sg.bx - sg.ax) * F.dir < 0);
     }
     // traffic
     this.updateTraffic(dt, player);

@@ -35,7 +35,8 @@ A small, original, cozy family adventure set in Forestville and Manly on Sydneyâ
 ## V3
 
 - **Water:** wade into the pond, creek and surf. Legs disappear under the waterline, and you get ripples and splashes. With snorkels you can swim properly.
-- **Fishing:** get the rod from the garden shed at home. Face any water and cast, wait out the nibbles, then press when the float plunges. There are 15 catches: pond and creek species, Manly surf species and harbour species, plus junk like a gumboot and a lost thong. It's all catch and release, and there's no fishing in the Cabbage Tree Bay reserve.
+- **Snorkel fishing:** grab the snorkel gear from the garden shed at home, face any water and dive in. Swim around looking for bubbles, a splash or a fin, then swim over and grab. Each character holds the catch up and cheers in their own way, then lets it go.
+- **(Old) Fishing:** get the rod from the garden shed at home. Face any water and cast, wait out the nibbles, then press when the float plunges. There are 15 catches: pond and creek species, Manly surf species and harbour species, plus junk like a gumboot and a lost thong. It's all catch and release, and there's no fishing in the Cabbage Tree Bay reserve.
 - **Chapter 3, Under the Bay:** Kez hands out snorkels. Swim out from Shelly Beach and spot the groper, wobbegong, cuttlefish, Port Jackson shark and turtle.
 - **Chapter 4, Harbour Day:** take the Manly ferry to a fictionalised Circular Quay, with the bridge across the water, the sail-roofed arts house, the Botanic Garden figs and city ibis. Hear Jess busk, catch a fish off a wharf, then take the family photo on the big steps.
 - **Music:** original looping themes for Forestville, Manly and the harbour, plus a calm underwater pad. They're sequenced live, and there's a separate Music toggle in the menu.
