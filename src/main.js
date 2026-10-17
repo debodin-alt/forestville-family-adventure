@@ -133,6 +133,21 @@ function startSoon() {
 }
 $('start-button').addEventListener('click', startSoon);
 
+// Start over: two taps so nobody wipes the adventure by accident.
+const restart = $('restart-button');
+restart.hidden = !hasProgress;
+let armed = 0;
+restart.addEventListener('click', () => {
+  if (!armed) {
+    armed = setTimeout(() => { armed = 0; restart.textContent = 'Start over from the beginning'; }, 4000);
+    restart.textContent = 'Tap again to wipe progress and restart';
+    return;
+  }
+  clearTimeout(armed);
+  state.save = resetSave(state.save.settings);
+  location.reload();
+});
+
 // Offline play: register the service worker (skipped in ?qa test runs).
 if ('serviceWorker' in navigator && !QA && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('./sw.js').catch(() => { /* offline support is optional */ });
