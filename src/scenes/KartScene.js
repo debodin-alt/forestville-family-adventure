@@ -1,12 +1,12 @@
 // Kart racing at "Level 5 Karting", Moore Park. Three laps against the family.
-// Touch: point the joystick where you want to go (kart steers toward it). Keys: arrows / WASD.
+// Touch: ◀ ▶ steer buttons on the left, GO and BRAKE pedals on the right. Keys: arrows / WASD.
 
 import { KW, KH, HW, LAPS, TRACK, N, paintKartTrack, paintKart } from '../data/kart.js';
 import { FAMILY, CHARACTERS } from '../data/characters.js';
 import { paintPortrait } from '../art/critters.js';
 import { audio } from '../systems/audio.js';
 import { music } from '../systems/music.js';
-import { input, readMove, takeAction, haptic, isTouch } from '../systems/input.js';
+import { input, takeAction, haptic, isTouch } from '../systems/input.js';
 import { writeSave } from '../systems/save.js';
 import { snapshot, addPhoto } from '../systems/photos.js';
 import { hud } from '../ui/hud.js';
@@ -59,7 +59,7 @@ export class KartScene extends Phaser.Scene {
     music.play('race');
     this.events.once('shutdown', () => this.cleanup());
     hud.showTitle('LEVEL 5 KARTING', 'Moore Park · 3 laps');
-    this.time.delayedCall(3200, () => hud.toast(isTouch() ? 'Point the joystick where you want to drive' : 'Arrow keys or WASD to drive', 3000));
+    this.time.delayedCall(3200, () => hud.toast(isTouch() ? 'Hold GO to drive · ◀ ▶ to steer' : 'Up to go · Left/Right to steer · Down to brake', 3200));
   }
 
   setView(v) {
@@ -95,7 +95,8 @@ export class KartScene extends Phaser.Scene {
   // ---------- HUD (DOM) ----------
   setupHud() {
     document.getElementById('app').classList.add('karting');
-    $('kart-hud').hidden = false;
+    $('kart-hud').hidden = false; $('kart-pad').hidden = false;
+    Object.keys(input.kart).forEach(k => { input.kart[k] = false; });
     $('kart-results').hidden = true;
     const lights = $('kart-lights'); lights.hidden = false; lights.querySelectorAll('i').forEach(l => l.classList.remove('on', 'go'));
     $('kart-best').textContent = `Best ${fmt(this.save.world.kart.best)}`;
@@ -141,7 +142,7 @@ export class KartScene extends Phaser.Scene {
     if (this.motor) { try { this.motor.o.stop(); this.motor.o2.stop(); } catch { /* ok */ } this.motor.g.disconnect(); this.motor = null; }
     this.scale.off('resize', this.applyZoom, this);
     document.getElementById('app').classList.remove('karting');
-    $('kart-hud').hidden = true; $('kart-lights').hidden = true; $('kart-results').hidden = true;
+    $('kart-hud').hidden = true; $('kart-pad').hidden = true; $('kart-lights').hidden = true; $('kart-results').hidden = true;
   }
 
   // ---------- race flow ----------
@@ -185,16 +186,11 @@ export class KartScene extends Phaser.Scene {
   }
 
   playerInput(k) {
-    const [jx, jy] = readMove();
-    const keys = input.keys;
-    const kbSteer = (keys.has('arrowright') || keys.has('d') ? 1 : 0) - (keys.has('arrowleft') || keys.has('a') ? 1 : 0);
-    const kbGas = keys.has('arrowup') || keys.has('w'), kbBrake = keys.has('arrowdown') || keys.has('s');
-    if (kbSteer || kbGas || kbBrake) return { steer: kbSteer, gas: kbGas ? 1 : 0, brake: kbBrake };
-    const mag = Math.hypot(jx, jy);
-    if (mag < 0.15) return { steer: 0, gas: 0, brake: false };
-    // joystick: kart turns toward where you point
-    let d = Math.atan2(jy, jx) - k.a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-    return { steer: Math.max(-1, Math.min(1, d * 2.4)), gas: Math.abs(d) > 2.3 ? 0 : mag, brake: Math.abs(d) > 2.3 && k.v > 60 };
+    const keys = input.keys, pad = input.kart;
+    const right = keys.has('arrowright') || keys.has('d') || pad.right, left = keys.has('arrowleft') || keys.has('a') || pad.left;
+    const gas = keys.has('arrowup') || keys.has('w') || pad.gas, brake = keys.has('arrowdown') || keys.has('s') || pad.brake;
+    // steering is always "your" left/right (like sitting in the kart), in both camera views
+    return { steer: (right ? 1 : 0) - (left ? 1 : 0), gas: gas ? 1 : 0, brake };
   }
 
   aiInput(k) {
@@ -319,7 +315,7 @@ export class KartScene extends Phaser.Scene {
     $('kart-result-title').textContent = place === 1 ? 'You win!' : `${ord(place)} place`;
     const kw = this.save.world.kart;
     $('kart-result-sub').textContent = `Your best lap ${fmt(this.player.best)}${newBest ? ' · NEW RECORD' : ''} · Wins ${kw.wins}/${kw.races}`;
-    $('kart-results').hidden = false;
+    $('kart-results').hidden = false; $('kart-pad').hidden = true;
     snapshot(this.game, data => { if (data) addPhoto(data, `Level 5 Karting · ${ord(place)} place`); });
     setTimeout(() => $('kart-again').focus(), 60);
   }

@@ -20,9 +20,10 @@ export function freshSave() {
       ch2: { unlocked: false, arrived: false, duck: false, lookout: false, photo: false, done: false },
       ch3: { unlocked: false, gear: false, spotted: [], done: false },
       ch4: { unlocked: false, arrived: false, busk: false, fish: false, photo: false, done: false },
+      zoo: { told: false, arrived: false, met: false, saved: [], done: false },
     },
     world: { areasSeen: [], talked: {}, items: { rod: false, snorkel: false }, fish: {}, kart: { best: null, wins: 0, races: 0 } },
-    settings: { muted: false, music: true, voices: true },
+    settings: { muted: false, music: true },
     meta: { created: now, updated: now, migratedFrom: null },
   };
 }
@@ -37,7 +38,7 @@ export function normalize(raw) {
   if (!isObj(raw)) return s;
   const p = isObj(raw.player) ? raw.player : {};
   s.player.who = FAMILY.includes(p.who) ? p.who : 'dan';
-  s.player.map = ['manly', 'harbour'].includes(p.map) ? p.map : 'forestville';
+  s.player.map = ['manly', 'harbour', 'zoo'].includes(p.map) ? p.map : 'forestville';
   s.player.x = num(p.x, null); s.player.y = num(p.y, null);
   const q = isObj(raw.quests) ? raw.quests : {};
   s.quests.intro = bool(q.intro, false);
@@ -54,6 +55,10 @@ export function normalize(raw) {
   s.quests.ch3.spotted = Array.isArray(c3.spotted) ? [...new Set(c3.spotted.filter(x => typeof x === 'string'))].slice(0, 20) : [];
   const c4 = isObj(q.ch4) ? q.ch4 : {};
   for (const k of ['unlocked', 'arrived', 'busk', 'fish', 'photo', 'done']) s.quests.ch4[k] = bool(c4[k], false);
+  const zq = isObj(q.zoo) ? q.zoo : {};
+  for (const k of ['told', 'arrived', 'met', 'done']) s.quests.zoo[k] = bool(zq[k], false);
+  s.quests.zoo.saved = Array.isArray(zq.saved) ? [...new Set(zq.saved.filter(x => ['koala', 'roo', 'penguin', 'meerkat', 'giraffe'].includes(x)))] : [];
+  if (s.quests.zoo.saved.length >= 5) s.quests.zoo.done = true;
   if (s.quests.ch2.done) s.quests.ch3.unlocked = true;
   if (s.quests.ch3.done) s.quests.ch4.unlocked = true;
   if (!s.quests.ch2.unlocked && s.player.map === 'manly') s.player.map = 'forestville';
@@ -63,7 +68,6 @@ export function normalize(raw) {
   s.world.talked = isObj(w.talked) ? Object.fromEntries(Object.entries(w.talked).filter(([k, v]) => typeof v === 'number').slice(0, 100)) : {};
   s.settings.muted = bool(raw.settings?.muted, false);
   s.settings.music = bool(raw.settings?.music, true);
-  s.settings.voices = bool(raw.settings?.voices, true);
   const it = isObj(w.items) ? w.items : {};
   s.world.items = { rod: bool(it.rod, false), snorkel: bool(it.snorkel, false) || bool(it.rod, false) };   // old rod saves get the snorkel gear
   s.world.divedOnce = bool(w.divedOnce, false);

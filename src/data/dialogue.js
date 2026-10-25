@@ -313,3 +313,65 @@ export const EXAMINE = {
 };
 
 export { NAMES };
+
+// ---------- Taronga Zoo: Zoo Rescue ----------
+const BABY_HINT = {
+  koala: 'Our baby koala loves a big gum tree. Try the gums on the picnic lawn, down the bottom.',
+  roo: 'The kangaroo joey went boing-boing-boing toward the picnic lawn. Bottom middle, I think.',
+  penguin: 'The penguin chick wanted a swim. Penguins love the fountain. Shhh, don’t tell the cafe.',
+  meerkat: 'Meerkat pups LOVE a bin. Check the bins by the Taronga Cafe.',
+  giraffe: 'The giraffe calf wandered off to the far side of the lawn, by the bus. Look for something tall and wobbly.',
+};
+export const ZOO = {
+  arriveFerry: [
+    ['sign', 'A short ferry ride across the harbour. The zoo sits on the hill, looking straight back at the city.'],
+    ['finn', 'Is that a GIRAFFE? With the Harbour Bridge behind it?!'],
+    ['jarency', 'Best view in Sydney, and it belongs to the giraffes.'],
+  ],
+  arriveBus: [
+    ['sign', 'The bus winds down the hill to the zoo’s back gate.'],
+    ['finn', 'I can smell the animals. In a good way. Mostly.'],
+  ],
+  meet: c => [
+    ['tui', 'Oh, thank goodness, visitors! I’m Tui, one of the keepers.'],
+    ['tui', 'Bit of a situation. Somebody left a gate open at breakfast, and FIVE of our babies wandered off.'],
+    ['tui', 'A baby koala, a kangaroo joey, a penguin chick, a meerkat pup and a giraffe calf.'],
+    [c.who, c.who === 'finn' ? 'A BABY GIRAFFE?! On the loose?! Best day ever.' : c.who === 'jessia' ? 'Okay, that is the cutest emergency I have ever heard of.' : c.who === 'dan' ? 'Leave it with us. We’re good at finding things. Mostly feathers.' : 'Say no more. We’ll round them up.'],
+    ['tui', 'Legend! Find a baby and say hi. It’ll follow you. Then walk it back to the gate of its enclosure.'],
+    ['tui', 'You can lead a few at once, like a little parade. Come and ask me if you need a hint!'],
+  ],
+  hint: (c, missing, carrying) => {
+    if (!missing.length) return carrying ? [['tui', 'That’s everyone found! Walk them back to their gates. Look for the signs on the fences.']] : [['tui', 'Every baby is home safe. You lot are honorary keepers!']];
+    const id = missing[c.times % missing.length];
+    return [['tui', `Still missing: ${missing.length}. ${BABY_HINT[id]}`], ...(carrying ? [['tui', 'And the ones following you: each enclosure has a sign by its gate.']] : [])];
+  },
+  notYet: c => [[c.who, 'Aww, hello little one. Where’s your keeper? Better find someone who works here first.']],
+  pickUp: {
+    dan: ['Come on, little mate. This way.', 'G’day, buddy. Follow the bear!', 'Got you! Stick with me, champ.'],
+    finn: ['HONK! Follow the goose!', 'You’re my best friend now!', 'Parade! PARADE!'],
+    jessia: ['Omg you’re SO tiny!', 'Come here, cutie! This way!', 'Hehe, follow me, little one!'],
+    jarency: ['There you are, sweetheart!', 'This way, gorgeous. Nice and easy.', 'Gotcha! Let’s get you home.'],
+  },
+  done: [
+    ['tui', 'That’s all five! Koala, joey, penguin, meerkat and giraffe, all home and fed.'],
+    ['tui', 'You lot are officially Honorary Keepers of Taronga Zoo. Badges and everything.'],
+    ['finn', 'Can my badge say “Head Goose Keeper”?'],
+    ['tui', 'I’ll write it on with texta.'],
+    ['jarency', 'Family photo with the giraffes before we go?'],
+  ],
+  ferryLocked: c => [['sign', 'TARONGA WHARF. Ferries to Circular Quay.'], [c.who, 'The city can wait. The bus home is at the bottom of the hill.']],
+  examine: {
+    gate: c => [['sign', 'TARONGA ZOO. Est. a very long time ago, by a harbour full of ferries.']],
+    cafe: c => [['sign', 'Taronga Cafe. Meat pies, ice creams, and a sign that says PLEASE DO NOT FEED THE MEERKATS (THEY WILL ASK).']],
+    gift: c => [['sign', 'Zoo Gifts. A wall of plush koalas stares at you. You feel very loved.']],
+    fountain: c => [['sign', 'A splashy fountain. Every coin in it is a wish. Most of them seem to be for ice cream.']],
+    pen: { koala: 'Koalas sleep up to 20 hours a day. Goals.', giraffe: 'Giraffes with a harbour view. The fanciest neighbours in Sydney.', meerkat: 'One meerkat is always on lookout duty. Today it’s a very serious one called Kevin.', penguin: 'Little penguins! The smallest penguins in the world, and the bossiest.', roo: 'Kangaroos can’t walk backwards. They only go forward. Same.' },
+  },
+};
+LATER.zoo = {
+  dan: c => pick([[['dan', 'I could watch the giraffes all day. With a coffee.']], [['dan', 'Meerkats are just tiny security guards.']]], c.times),
+  finn: c => pick([[['finn', 'I asked the penguins if they’re birds like me. They said “honk”. Probably.']], [['finn', 'When I grow up I want to be a zookeeper. Or a ferry.']]], c.times),
+  jessia: c => pick([[['jessia', 'The baby koala fell asleep on my foot. I can never leave.']], [['jessia', 'Six… seven… giraffes. Okay, three. Still counts.']]], c.times),
+  jarency: c => pick([[['jarency', 'Look at that view. The bridge, the sails, and a giraffe in front of it.']], [['jarency', 'Tui said the koalas sleep twenty hours a day. Honestly? Inspiring.']]], c.times),
+};
+NPC_TALK.tui = c => [['tui', 'G’day! Thanks for helping out.']];

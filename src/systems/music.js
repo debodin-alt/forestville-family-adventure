@@ -41,6 +41,15 @@ const THEMES = {
       F4 - Bb4 - D5 - - - | E4 - G4 - C5 - - - | A4 - C5 - E5 - C5 - | D5 - - - A4 - - - |
       G4 - Bb4 - D5 - Bb4 - | C5 - E5 - G5 - E5 - | F5 - C5 - A4 - C5 - | F4 - - - - - - -`),
   },
+  zoo: {
+    bpm: 112, lead: 'marimba', swing: 0.12, shaker: true,
+    chords: 'C Am F G C Am Dm G F G Em Am F G C C',
+    melody: bars(`
+      E5 - G5 - E5 C5 - D5 | E5 - - C5 A4 - - - | F4 - A4 - C5 - A4 - | B4 - D5 - G4 - - - |
+      E5 - G5 - C6 - G5 - | A5 - G5 - E5 - C5 - | D5 - F5 - A5 - F5 - | G5 - - - D5 - - - |
+      C5 - A4 - F4 - A4 - | B4 - D5 - G5 - D5 - | E5 - G5 - B5 - G5 - | A5 - - - E5 - - - |
+      F5 - E5 - D5 - C5 - | B4 - D5 - G5 - F5 - | E5 - D5 - C5 - G4 - | C5 - - - - - - -`),
+  },
   race: {
     bpm: 132, lead: 'keys', swing: 0, shaker: true, brush: true,
     chords: 'Am F C G Am F C E Am F C G F G Am Am',

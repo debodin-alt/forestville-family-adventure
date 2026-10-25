@@ -9,7 +9,6 @@ import { haptic } from './input.js';
 import { hud } from '../ui/hud.js';
 import { CATCH_LINES, MISS_LINES, JUNK_LINES } from '../data/dialogue.js';
 import { CHARACTERS } from '../data/characters.js';
-import { voice } from './voice.js';
 
 const FACE = { down: [0, 1], up: [0, -1], side: [1, 0] };
 const CLUES = { pond: ['bubbles', 'splash', 'bubbles'], creek: ['bubbles', 'splash'], surf: ['fin', 'splash', 'bubbles'], harbour: ['fin', 'bubbles', 'splash'] };
@@ -198,7 +197,7 @@ export class Fishing {
     s.bubble(line, p, f.rare ? '#f2c230' : null);
     audio.caught(f.rare);
     if (p.id === 'finn') audio.honk();
-    s.time.delayedCall(p.id === 'finn' ? 300 : 120, () => voice.say(p.id, line));
+    s.time.delayedCall(120, () => this.cheer(p.id));
     haptic.success(); s.zoomPulse(1.06, 900);
     s.time.delayedCall(1500, () => hud.catchCard({ spec: f, size, isNew, count: Object.keys(log).length }));
     // let it go
@@ -215,7 +214,7 @@ export class Fishing {
     const s = this.s, p = s.player;
     const ml = pick(MISS_LINES[p.id]);
     s.bubble(ml, p);
-    s.time.delayedCall(200, () => voice.say(p.id, ml));
+    { const v = CHARACTERS[p.id].voice; [1, 0.85, 0.7].forEach((m, i) => s.time.delayedCall(150 + i * 110, () => audio.blip(v * m))); }
     audio.gotAway();
     const sh = s.add.image(p.x, p.y + 4, 'fishshadow').setDepth(-3400).setAlpha(0.45);
     s.tweens.add({ targets: sh, x: p.x + (Math.random() - 0.5) * 260, y: p.y + (Math.random() - 0.5) * 140, alpha: 0, duration: 800, onComplete: () => sh.destroy() });

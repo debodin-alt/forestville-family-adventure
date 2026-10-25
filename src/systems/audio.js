@@ -113,6 +113,21 @@ class AudioSystem {
     if (surface === 'wood') this.tone({ f: 150 * v, type: 'triangle', dur: 0.06, vol: 0.05 });
   }
 
+  // teleport: a rising sparkly whoosh
+  teleport() {
+    if (!this.ok) return;
+    this.tone({ f: 300, f2: 1800, type: 'sine', dur: 0.55, vol: 0.07, attack: 0.03 });
+    [1047, 1319, 1568, 2093].forEach((f, i) => this.tone({ f, type: 'triangle', t: 0.15 + i * 0.07, dur: 0.25, vol: 0.05 }));
+  }
+
+  // Jessia's 6-7 as a cute chirp: a quick "six" then a long, wobbly "seveeeeen"
+  sixSeven() {
+    if (!this.ok) return;
+    this.tone({ f: 820, f2: 900, type: 'triangle', dur: 0.09, vol: 0.08 });
+    this.tone({ f: 700, f2: 980, type: 'triangle', t: 0.32, dur: 0.22, vol: 0.08 });
+    for (let i = 0; i < 9; i++) this.tone({ f: 980 - i * 30 + (i % 2 ? 40 : 0), f2: 980 - (i + 1) * 30 + (i % 2 ? 0 : 40), type: 'triangle', t: 0.54 + i * 0.2, dur: 0.22, vol: 0.075 - i * 0.004, attack: 0.02 });
+  }
+
   blip(pitch = 300) {
     if (!this.ok) return;
     this.tone({ f: pitch * (0.92 + Math.random() * 0.16), type: 'triangle', dur: 0.05, vol: 0.05 });

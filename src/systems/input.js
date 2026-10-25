@@ -4,6 +4,7 @@ export const input = {
   x: 0, y: 0,            // movement vector, length <= 1
   action: false,         // edge-triggered, consumed by the scene
   keys: new Set(),
+  kart: { left: false, right: false, gas: false, brake: false },   // on-screen kart buttons
   touch: false,
   onKey: null,           // (key) => void for extra shortcuts
 };
@@ -68,6 +69,16 @@ export function initInput({ zone, base, knob, actionBtn }) {
   });
   const up = () => actionBtn.classList.remove('pressed');
   actionBtn.addEventListener('pointerup', up); actionBtn.addEventListener('pointercancel', up); actionBtn.addEventListener('pointerleave', up);
+
+  // ---- kart buttons (multi-touch: steer with one thumb, pedal with the other) ----
+  document.querySelectorAll('.kart-btn').forEach(b => {
+    const k = b.dataset.k, ids = new Set();
+    const set = () => { input.kart[k] = ids.size > 0; b.classList.toggle('on', ids.size > 0); };
+    b.addEventListener('pointerdown', e => { e.preventDefault(); ids.add(e.pointerId); try { b.setPointerCapture(e.pointerId); } catch { /* ok */ } input.touch = input.touch || e.pointerType !== 'mouse'; if (ids.size === 1) haptic.light(); set(); });
+    const off = e => { ids.delete(e.pointerId); set(); };
+    b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  });
 
   // block iOS double-tap zoom / long-press menus on the game surface
   document.addEventListener('gesturestart', e => e.preventDefault());

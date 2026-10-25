@@ -37,6 +37,10 @@ export const CHARACTERS = {
     name: 'Ms Aroha', species: 'possum', speed: 40, voice: 260,
     fur: '#8f8984', furLight: '#d9d3cc', outfit: '#d9a441', outfit2: '#2f6fa3',
   },
+  tui: {
+    name: 'Keeper Tui', species: 'wombat', speed: 40, voice: 230,
+    fur: '#9a7b5a', furLight: '#cdb393', outfit: '#6f7f45', outfit2: '#c9a86a',
+  },
   kez: {
     name: 'Kez', species: 'kangaroo', speed: 40, voice: 210,
     fur: '#c98e57', furLight: '#efd3b0', outfit: '#f2c230', outfit2: '#d8352a',

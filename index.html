@@ -46,6 +46,9 @@
             <div class="top-right">
               <div id="character-switcher" class="glass-card character-switcher" aria-label="Switch character"></div>
               <div class="mini-row">
+                <button id="home-button" class="round-button home-button" type="button" aria-label="Teleport home">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.5L12 4l8.5 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9.5h4.5v-5h3v5H18V10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
+                </button>
                 <button id="mute-button" class="round-button" type="button" aria-label="Sound on. Turn sound off">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </button>
@@ -91,14 +94,13 @@
                 <button id="mute-toggle" class="secondary-button" type="button" aria-pressed="true">Sound: on</button>
                 <button id="music-toggle" class="secondary-button" type="button" aria-pressed="true">Music: on</button>
               </div>
-              <button id="voices-toggle" class="secondary-button" type="button" aria-pressed="true">Voices: on</button>
               <button id="reset-button" class="secondary-button danger" type="button">Start a new adventure</button>
               <div id="reset-confirm" class="reset-confirm" hidden>
                 <p>This clears your feathers and progress. Are you sure?</p>
                 <div class="row"><button id="reset-yes" class="secondary-button danger" type="button">Yes, start over</button><button id="reset-no" class="secondary-button" type="button">Keep playing</button></div>
               </div>
             </div>
-            <p class="controls-help"><b>Keyboard:</b> WASD or arrows to walk · E or Space to interact · 1–4 to swap family · M to mute</p>
+            <p class="controls-help"><b>Keyboard:</b> WASD or arrows to walk · E or Space to interact · 1–4 to swap family · H to teleport home · M to mute</p>
             <button id="close-menu" class="primary-button" type="button">Back to the game</button>
           </div>
         </div>
@@ -110,6 +112,16 @@
           <button id="kart-leave" class="round-button kart-leave" type="button" aria-label="Leave the kart track">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
           </button>
+        </div>
+        <div id="kart-pad" class="kart-pad" hidden>
+          <div class="kart-steer">
+            <button class="kart-btn" data-k="left" type="button" aria-label="Steer left"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-8 7 8 7z" fill="currentColor"/></svg></button>
+            <button class="kart-btn" data-k="right" type="button" aria-label="Steer right"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l8 7-8 7z" fill="currentColor"/></svg></button>
+          </div>
+          <div class="kart-pedals">
+            <button class="kart-btn brake" data-k="brake" type="button" aria-label="Brake">BRAKE</button>
+            <button class="kart-btn gas" data-k="gas" type="button" aria-label="Go">GO</button>
+          </div>
         </div>
         <div id="kart-lights" class="kart-lights" hidden aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
         <div id="kart-results" class="panel-screen" hidden>

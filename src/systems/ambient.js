@@ -12,7 +12,7 @@ import { audio } from './audio.js';
 import { SPOTS, G } from '../data/maps/forestville.js';
 import { MSPOTS } from '../data/maps/manly.js';
 
-function animalTexture(scene, kind) {
+export function animalTexture(scene, kind) {
   const key = `ani-${kind}`;
   const baked = state.bakeMeta?.[key];
   if (scene.textures.exists(key)) {
@@ -37,7 +37,7 @@ export class Ambient {
     this.animals = {}; this.butterflies = []; this.flock = []; this.leaves = []; this.cars = []; this.gulls = []; this.swimmers = [];
     this.nextFlock = 4000; this.nextLeaf = 0; this.nextCar = [1000, 3000];
     this.makeShared();
-    if (map.id === 'forestville') this.forestville(); else if (map.id === 'manly') this.manly(); else this.harbour();
+    if (map.id === 'forestville') this.forestville(); else if (map.id === 'manly') this.manly(); else if (map.id === 'zoo') this.zoo(); else this.harbour();
     this.motes();
   }
 
@@ -197,6 +197,37 @@ export class Ambient {
     });
   }
 
+  zoo() {
+    const m = this.map, pens = m.pens;
+    for (let i = 0; i < 40; i++) this.sparkleAt(this.r() * m.w, 70 + this.r() * 170);
+    const pen = (key, kind, id, n, opts = {}) => {
+      const [x, y, w, h] = pens[id].rect;
+      for (let i = 0; i < n; i++) {
+        const a = this.addAnimal(`${key}${i}`, kind, x + 50 + this.r() * (w - 100), y + 60 + this.r() * (h - 90), { frames: [0, 0, 0, 1], fps: 2, scale: opts.scale || 1, ...opts });
+        a.mode = 'pen'; a.pen = [x + 30, y + 50, w - 60, h - 70]; a.sp = opts.sp || 26; a.pause = this.r() * 4000;
+      }
+    };
+    pen('gir', 'giraffe', 'giraffe', 3, { scale: 1.75, sp: 22 });
+    pen('roo', 'roo', 'roo', 4, { scale: 1.45, sp: 60, hop: true });
+    pen('pen', 'penguin', 'penguin', 5, { scale: 1.1, sp: 28 });
+    pen('mk', 'meerkat', 'meerkat', 5, { scale: 1.1, sp: 40 });
+    // koalas napping up in their gums
+    for (const [x, y] of [[900, 370], [1130, 400], [1230, 350]]) this.addAnimal(`ko${x}`, 'koala', x + 6, y, { frames: [1, 1, 1, 0], fps: 0.6, scale: 1.1, depth: 9e5 - 10 });
+    this.addAnimal('ibisZ', 'ibis', 1500, 1450, { frames: [0, 2, 0, 1], fps: 2, mode: 'wander' });
+    for (let i = 0; i < 4; i++) { const a = this.addAnimal(`zg${i}`, 'gull', 200 + this.r() * 600, 330 + this.r() * 200, { frames: [2, 2, 3, 2, 2, 3], fps: 1.4, oy: 0.96 }); a.mode = 'gull'; a.home = { x: a.x, y: a.y }; }
+    this.gullZone = [150, 320, 600, 240];
+    this.tufts(40, (x, y) => m.surfaceAt(x, y) === 'grass' && !Object.values(pens).some(p => x > p.rect[0] - 20 && x < p.rect[0] + p.rect[2] + 20 && y > p.rect[1] - 20 && y < p.rect[1] + p.rect[3] + 40));
+    this.butterfliesAround([[300, 1500], [1300, 1700], [2400, 1500], [700, 1800]]);
+    this.lanes = [];
+    // ferries criss-crossing the harbour out front
+    if (!this.scene.textures.exists('ferry-move')) this.scene.textures.addCanvas('ferry-move', paintFerry().canvas);
+    this.ferryPath = [[-200, 170], [1200, 150], [2000, 175], [3100, 160]];
+    const segs = []; let L = 0;
+    for (let i = 0; i < this.ferryPath.length - 1; i++) { const [ax, ay] = this.ferryPath[i], [bx, by] = this.ferryPath[i + 1]; const l = Math.hypot(bx - ax, by - ay); segs.push({ ax, ay, bx, by, l, s: L }); L += l; }
+    this.ferrySegs = segs; this.ferryLen = L;
+    this.ferries = [{ f: this.scene.add.image(0, 0, 'ferry-move').setScale(1 / ART * 0.7).setDepth(-3300), d: L * 0.4, dir: 1, v: 60, wait: 0 }];
+  }
+
   // ---------- update ----------
   update(dt, time, player, cam) {
     const s = this.scene, sec = dt / 1000;
@@ -213,6 +244,16 @@ export class Ambient {
         if (!a.target || Math.random() < 0.002) a.target = { x: a.home.x + (Math.random() - 0.5) * 360, y: a.home.y + (Math.random() - 0.3) * 120 };
         const dx = a.target.x - a.x, dy = a.target.y - a.y, d = Math.hypot(dx, dy);
         if (d > 4) { a.x += dx / d * 30 * sec; a.y += dy / d * 30 * sec; a.spr.setFlipX(dx < 0); a.spr.setDepth(a.y); }
+      } else if (a.mode === 'pen') {
+        // zoo animals wander around inside their enclosure, with naps in between
+        if (a.pause > 0) { a.pause -= dt; if (a.walking) { a.walking = false; a.frames = [0, 0, 0, 1]; a.fps = 2; } }
+        else {
+          if (!a.target) { const [px, py, pw, ph] = a.pen; a.target = { x: px + Math.random() * pw, y: py + Math.random() * ph }; }
+          if (!a.walking) { a.walking = true; a.frames = [2, 3]; a.fps = a.hop ? 4 : 5; }
+          const dx = a.target.x - a.x, dy = a.target.y - a.y, d = Math.hypot(dx, dy);
+          if (d < 4) { a.target = null; a.pause = 1500 + Math.random() * 5000; }
+          else { const v = a.sp * sec * (a.hop ? (Math.floor(a.t / 250) % 2 ? 1.6 : 0.3) : 1); a.x += dx / d * v; a.y += dy / d * v; a.spr.setFlipX(dx < 0); a.spr.setDepth(a.y); }
+        }
       } else if (a.mode === 'gull') {
         const pd = player ? Math.hypot(player.x - a.x, player.y - a.y) : 999;
         if (pd < 90 && !a.flying) { a.flying = true; a.frames = [0, 1]; a.fps = 8; a.vx = (a.x > player.x ? 1 : -1) * 160; a.vy = -120; audio.bird('gull'); }

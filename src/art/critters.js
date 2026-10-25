@@ -594,6 +594,100 @@ export const ANIMALS = {
     ctx.restore();
     ctx.fillStyle = '#2b2622'; ctx.fillRect(8.4, 2, 1.2, 10);
   }, false),
+  // ---------- Taronga Zoo ----------
+  // frames 0: idle, 1: blink, 2-3: walk / hop
+  koala: () => frameSet(40, 40, 4, (ctx, i) => {
+    const w = i >= 2 ? (i === 2 ? 1 : -1) : 0, b = i >= 2 ? Math.abs(w) : 0;
+    ellipse(ctx, 13 + w * 2, 36, 5, 3, '#6f7378'); ellipse(ctx, 27 - w * 2, 36, 5, 3, '#6f7378');
+    ellipse(ctx, 20, 27 - b, 12, 10, '#9aa0a6');
+    ellipse(ctx, 20, 29 - b, 7, 6.5, '#ece8e2');
+    for (const ex of [8, 32]) { ellipse(ctx, ex, 8 - b, 7, 6.5, '#a3a8ad'); ellipse(ctx, ex, 8.5 - b, 4, 3.8, '#f1ebe4'); }
+    ellipse(ctx, 20, 14 - b, 11.5, 10, '#a9aeb3');
+    ellipse(ctx, 20, 17 - b, 3.6, 4.6, '#3b3634');
+    ellipse(ctx, 19, 15.5 - b, 1.2, 0.9, 'rgba(255,255,255,.5)');
+    if (i === 1) { ctx.strokeStyle = '#222'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(12.5, 12.5 - b); ctx.lineTo(16, 12.5 - b); ctx.moveTo(24, 12.5 - b); ctx.lineTo(27.5, 12.5 - b); ctx.stroke(); }
+    else for (const ex of [14.5, 25.5]) { ellipse(ctx, ex, 12.5 - b, 2, 2.2, '#1d1a19'); ellipse(ctx, ex + 0.6, 11.7 - b, 0.7, 0.7, '#fff'); }
+    ellipse(ctx, 11, 18 - b, 2.2, 1.4, 'rgba(240,150,150,.45)'); ellipse(ctx, 29, 18 - b, 2.2, 1.4, 'rgba(240,150,150,.45)');
+  }),
+  roo: () => frameSet(49, 52, 4, (ctx, i) => {
+    ctx.translate(3, 5);
+    const air = i === 3 ? -6 : 0, crouch = i === 2 ? 2 : 0;
+    ctx.strokeStyle = '#b37a45'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(12, 34 + air + crouch); ctx.quadraticCurveTo(4, 38 + air, 1, i === 3 ? 34 : 42); ctx.stroke();
+    ellipse(ctx, 21 + (i === 3 ? -2 : 0), 42 + air * 0.6, i === 3 ? 10 : 9, 3.2, '#a26c3c');
+    ellipse(ctx, 19, 31 + air + crouch, 10, 11.5, '#c98e57');
+    ellipse(ctx, 22, 33 + air + crouch, 5.5, 7.5, '#efd3b0');
+    ellipse(ctx, 27, 27 + air + crouch, 2.5, 3.5, '#b37a45');
+    const hx = 28, hy = 15 + air + crouch;
+    ellipse(ctx, hx - 4, hy - 9, 2.6, 6.5, '#c98e57', -0.25); ellipse(ctx, hx + 1, hy - 10, 2.6, 6.5, '#c98e57', 0.15);
+    ellipse(ctx, hx - 4, hy - 9, 1.2, 4, '#efc6a0', -0.25); ellipse(ctx, hx + 1, hy - 10, 1.2, 4, '#efc6a0', 0.15);
+    ellipse(ctx, hx, hy, 8, 7, '#c98e57');
+    ellipse(ctx, hx + 6, hy + 2.5, 4.5, 3.5, '#d9a273');
+    ellipse(ctx, hx + 9.5, hy + 1.5, 1.4, 1.1, '#3b2a20');
+    if (i === 1) { ctx.strokeStyle = '#222'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(hx, hy - 2); ctx.lineTo(hx + 3.5, hy - 2); ctx.stroke(); }
+    else { ellipse(ctx, hx + 2, hy - 2, 1.9, 2.1, '#1d1a19'); ellipse(ctx, hx + 2.6, hy - 2.7, 0.7, 0.7, '#fff'); }
+  }),
+  penguin: () => frameSet(30, 36, 4, (ctx, i) => {
+    const tilt = i === 2 ? -0.12 : i === 3 ? 0.12 : 0;
+    ellipse(ctx, 11, 34, 4, 2, '#f0a890'); ellipse(ctx, 19, 34, 4, 2, '#f0a890');
+    ctx.save(); ctx.translate(15, 34); ctx.rotate(tilt); ctx.translate(-15, -34);
+    ellipse(ctx, 5.5, 22, 2.6, 7.5, '#35628f', 0.35); ellipse(ctx, 24.5, 22, 2.6, 7.5, '#35628f', -0.35);
+    ellipse(ctx, 15, 22, 9, 12, '#3f73a6');
+    ellipse(ctx, 15, 24.5, 6, 9, '#f6f5f0');
+    ellipse(ctx, 15, 10, 7.5, 7, '#3f73a6');
+    ellipse(ctx, 15, 12, 4.5, 3.5, '#f6f5f0');
+    ctx.fillStyle = '#3a3a3a'; ctx.beginPath(); ctx.moveTo(13, 12.5); ctx.lineTo(17, 12.5); ctx.lineTo(15, 15.5); ctx.closePath(); ctx.fill();
+    if (i === 1) { ctx.strokeStyle = '#1d1a19'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(10.5, 9.5); ctx.lineTo(13, 9.5); ctx.moveTo(17, 9.5); ctx.lineTo(19.5, 9.5); ctx.stroke(); }
+    else for (const ex of [11.8, 18.2]) { ellipse(ctx, ex, 9.5, 1.7, 1.9, '#1d1a19'); ellipse(ctx, ex + 0.5, 8.9, 0.6, 0.6, '#fff'); }
+    ctx.restore();
+  }),
+  meerkat: () => frameSet(36, 40, 4, (ctx, i) => {
+    ctx.translate(2, 0);
+    if (i < 2) {
+      ctx.strokeStyle = '#a98a5e'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(18, 35); ctx.quadraticCurveTo(27, 36, 26, 28); ctx.stroke();
+      ellipse(ctx, 11, 38, 4, 2, '#8f7048'); ellipse(ctx, 19, 38, 4, 2, '#8f7048');
+      ellipse(ctx, 15, 27, 6.5, 11, '#c8a878');
+      ellipse(ctx, 15, 28, 3.8, 8, '#e6d2ad');
+      ellipse(ctx, 12, 22, 2, 3, '#b3926a'); ellipse(ctx, 18, 22, 2, 3, '#b3926a');
+      ellipse(ctx, 15, 11, 6, 5.5, '#c8a878');
+      ellipse(ctx, 9.5, 9, 1.6, 1.8, '#5a4530'); ellipse(ctx, 20.5, 9, 1.6, 1.8, '#5a4530');
+      ellipse(ctx, 15, 14.5, 3, 2.3, '#e6d2ad');
+      ellipse(ctx, 15, 15, 1.2, 0.9, '#2b2018');
+      for (const ex of [12.3, 17.7]) { ellipse(ctx, ex, 10.5, 2.2, 1.9, '#3a2a1c'); if (i === 0) { ellipse(ctx, ex, 10.5, 1.2, 1.3, '#111'); ellipse(ctx, ex + 0.4, 10, 0.45, 0.45, '#fff'); } }
+      return;
+    }
+    const st = i === 2 ? 1 : -1;
+    ctx.strokeStyle = '#a98a5e'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(5, 32); ctx.quadraticCurveTo(0, 30, 1, 24); ctx.stroke();
+    ctx.strokeStyle = '#8f7048'; ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.moveTo(9, 34); ctx.lineTo(9 + st * 3, 39); ctx.moveTo(19, 34); ctx.lineTo(19 - st * 3, 39); ctx.stroke();
+    ellipse(ctx, 14, 32, 10, 5.5, '#c8a878');
+    ellipse(ctx, 25, 28, 5, 4.6, '#c8a878');
+    ellipse(ctx, 29, 29.5, 2.4, 1.8, '#e6d2ad'); ellipse(ctx, 30.5, 29.3, 0.9, 0.8, '#2b2018');
+    ellipse(ctx, 25.5, 27, 2, 1.7, '#3a2a1c'); ellipse(ctx, 25.7, 27, 1, 1.1, '#111');
+    ellipse(ctx, 22, 24.5, 1.5, 1.6, '#5a4530');
+  }),
+  giraffe: () => frameSet(60, 90, 4, (ctx, i) => {
+    const st = i === 2 ? 1 : i === 3 ? -1 : 0;
+    const leg = (x, d) => { ctx.strokeStyle = '#d9a64c'; ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, 54); ctx.lineTo(x + d, 86); ctx.stroke(); ellipse(ctx, x + d, 87, 2.4, 1.4, '#5a3a22'); };
+    leg(14, st * 3); leg(20, -st * 3); leg(32, -st * 3); leg(38, st * 3);
+    ctx.strokeStyle = '#a8652e'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(10, 46); ctx.quadraticCurveTo(5, 52, 6, 60); ctx.stroke();
+    ellipse(ctx, 6, 61, 1.6, 2.4, '#5a3a22');
+    ellipse(ctx, 26, 48, 18, 10, '#e8b65a');
+    ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = '#e8b65a'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(38, 44); ctx.quadraticCurveTo(44, 28, 45, 14); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = '#a8652e';
+    for (const [x, y, r] of [[16, 45, 3.2], [24, 49, 3.6], [31, 44, 3], [19, 53, 2.4], [33, 51, 2.6], [10, 49, 2.2], [41, 36, 2], [43, 26, 1.8], [44, 19, 1.5]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = '#8a5428'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(41, 40); ctx.quadraticCurveTo(44, 26, 42, 12); ctx.stroke();
+    ctx.strokeStyle = '#c99a48'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(44, 7); ctx.lineTo(43, 1.5); ctx.moveTo(49, 7); ctx.lineTo(50, 1.5); ctx.stroke();
+    ellipse(ctx, 43, 2, 1.6, 1.6, '#6b4428'); ellipse(ctx, 50, 2, 1.6, 1.6, '#6b4428');
+    ellipse(ctx, 40, 8, 3.2, 1.8, '#e8b65a', -0.4);
+    ellipse(ctx, 48, 10, 7, 5.5, '#efc06a');
+    ellipse(ctx, 54, 12, 4, 3.2, '#f3d8a0');
+    ellipse(ctx, 56, 11.5, 0.8, 0.7, '#5a3a22');
+    if (i === 1) { ctx.strokeStyle = '#222'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(47, 8.5); ctx.lineTo(50.5, 8.5); ctx.stroke(); }
+    else { ellipse(ctx, 49, 8.5, 1.8, 2, '#1d1a19'); ellipse(ctx, 49.6, 7.8, 0.6, 0.6, '#fff'); }
+  }),
   swimmer: () => frameSet(36, 24, 2, (ctx, i) => {
     ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.ellipse(18, 18, 14, 4, 0, 0, Math.PI * 2); ctx.stroke();

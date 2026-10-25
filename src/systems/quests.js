@@ -1,7 +1,8 @@
 // Quest logic: objectives, map interactables and story beats.
 // Text lives in data/dialogue.js; this file decides when it plays.
 
-import { LINES, EXAMINE, FAMILY_TALK, NPC_TALK, INTRO, TIP, MORE, LATER } from '../data/dialogue.js';
+import { LINES, EXAMINE, FAMILY_TALK, NPC_TALK, INTRO, TIP, MORE, LATER, ZOO } from '../data/dialogue.js';
+import { PENS, ZSPOTS } from '../data/maps/zoo.js';
 import { SEA_LIFE } from '../data/fish.js';
 import { HSPOTS } from '../data/maps/harbour.js';
 import { SPOTS, G } from '../data/maps/forestville.js';
@@ -9,7 +10,12 @@ import { MSPOTS } from '../data/maps/manly.js';
 import { FEATHER_IDS } from './save.js';
 
 export function objective(s) {
-  const c1 = s.quests.ch1, c2 = s.quests.ch2;
+  const c1 = s.quests.ch1, c2 = s.quests.ch2, z = s.quests.zoo;
+  // the zoo is its own level: whenever you're there, its goal comes first
+  if (s.player.map === 'zoo' && !z.done) {
+    if (!z.met) return { chapter: 'Zoo Rescue', objective: 'Talk to Keeper Tui by the zoo gate', feathers: null };
+    return { chapter: 'Zoo Rescue', objective: `Find the runaway babies and walk them home (${z.saved.length}/5)`, feathers: z.saved.length };
+  }
   if (!c1.done) {
     const n = c1.feathers.length;
     const hint = !c1.feathers.includes('pond') ? 'The ducks at the pond look suspicious.'
@@ -41,7 +47,8 @@ export function objective(s) {
     if (!c4.fish) todo.push('catch a fish off a wharf');
     return { chapter: 'Ch 4 · Harbour Day', objective: todo.length ? todo.join(' · ').replace(/^./, m => m.toUpperCase()) : 'Family photo on the big steps', feathers: null };
   }
-  return { chapter: 'The End (for now)', objective: 'Fish, snorkel and explore. Fill your album!', feathers: null };
+  if (!z.done) return { chapter: 'Ch 5 · Zoo Rescue', objective: 'Catch the bus to Taronga Zoo (stop by the village shops)', feathers: null };
+  return { chapter: 'The End (for now)', objective: 'Fish, snorkel, race and explore. Fill your album!', feathers: null };
 }
 
 // Snorkel spotting (called by the scene when you swim up to a creature).
@@ -74,6 +81,13 @@ export function onEnterMap(S) {
   }
   if (S.mapId === 'manly' && !q.ch2.arrived) {
     S.delay(900, () => S.say(LINES.manlyArrive, () => { q.ch2.arrived = true; S.persist(); S.refresh(); S.chime(); }));
+  }
+  if (S.mapId === 'zoo' && !q.zoo.arrived) {
+    S.delay(900, () => S.say(S.arrivedBy === 'bus' ? ZOO.arriveBus : ZOO.arriveFerry, () => { q.zoo.arrived = true; S.persist(); S.refresh(); S.emphasize(ZSPOTS.tui[0], ZSPOTS.tui[1]); }));
+  }
+  if (S.mapId === 'forestville' && !q.zoo.told && q.intro) {
+    q.zoo.told = true; S.persist();
+    S.delay(2600, () => { S.toast('NEW! A bus to Taronga Zoo leaves from the village shops', 4200); });
   }
   if (S.mapId === 'harbour' && !q.ch4.arrived) {
     const extra = S.save.world.items.snorkel ? [] : MORE.rodSpare;
@@ -167,6 +181,9 @@ export function buildInteractables(S) {
       run: () => { if (!c1.done) S.say(LINES.busLocked(S.ctx())); else S.travel('manly'); },
     });
 
+    // --- the zoo bus (always open)
+    add({ id: 'zooBus', verb: 'travel', label: 'Bus to Taronga Zoo', x: 3120, y: 1244, r: 80, markerH: 110, run: () => S.travel('zoo', 'bus') });
+
     // --- the kart bus
     add({ id: 'kartBus', verb: 'travel', label: 'Bus to Moore Park karts', x: 2840, y: 1240, r: 70, markerH: 100, run: () => S.karts() });
 
@@ -229,10 +246,26 @@ export function buildInteractables(S) {
         S.say(MORE.photo4, () => S.photo4());
       },
     });
+    add({ id: 'zooFerry', verb: 'travel', label: 'Ferry to Taronga Zoo', x: 440, y: 700, r: 90, markerH: 100, run: () => { S.horn(); S.travel('zoo', 'ferry'); } });
     add({ id: 'kartBusH', verb: 'travel', label: 'Bus to Moore Park karts', x: 560, y: 1000, r: 80, markerH: 100, run: () => S.karts() });
     ex('sails', 2380, 600, 'The sails', 'sails', { markerH: 150, r: 110 });
     ex('customs', 900, 1250, 'Old building', 'customs', { markerH: 160, r: 100 });
     ex('fig', 2250, 1066, 'Fig tree', 'fig', { markerH: 150 });
+  }
+  if (S.mapId === 'zoo') {
+    const z = S.zoo();
+    for (const d of z.interactables()) add(d);
+    add({ id: 'zooBusBack', verb: 'travel', label: 'Bus to Forestville', x: ZSPOTS.bus[0], y: ZSPOTS.bus[1] + 8, r: 80, markerH: 110, run: () => S.travel('forestville', 'bus') });
+    add({
+      id: 'zooWharf', get verb() { return q.ch4.unlocked ? 'travel' : 'examine'; }, get label() { return q.ch4.unlocked ? 'Ferry to Circular Quay' : 'Taronga Wharf'; },
+      x: ZSPOTS.ferry[0], y: ZSPOTS.ferry[1] - 20, r: 80, markerH: 100,
+      run: () => { if (!q.ch4.unlocked) return S.say(ZOO.ferryLocked(S.ctx())); S.horn(); S.travel('harbour', 'zoo'); },
+    });
+    ex('zooGate', ZSPOTS.gate[0], ZSPOTS.gate[1] + 10, 'Zoo gate', null, { markerH: 210, r: 70, run: () => S.say(ZOO.examine.gate(S.ctx())) });
+    ex('zooCafe', ZSPOTS.cafe[0], ZSPOTS.cafe[1] + 6, 'Taronga Cafe', null, { markerH: 120, run: () => S.say(ZOO.examine.cafe(S.ctx())) });
+    ex('zooGift', ZSPOTS.gift[0], ZSPOTS.gift[1] + 6, 'Zoo Gifts', null, { markerH: 120, run: () => S.say(ZOO.examine.gift(S.ctx())) });
+    ex('fountain', ZSPOTS.fountain[0] - 70, ZSPOTS.fountain[1] + 20, 'Fountain', null, { markerH: 100, r: 50, run: () => S.say(ZOO.examine.fountain(S.ctx())) });
+    for (const [id, pen] of Object.entries(PENS)) ex(`pen-${id}`, pen.gate[0] - 70, pen.gate[1] - 20, pen.name.replace(/(^|\s)\S/g, m => m).toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()), null, { markerH: 80, r: 60, run: () => S.say([['sign', ZOO.examine.pen[id]]]) });
   }
   return list;
 }
@@ -253,6 +286,12 @@ export function talkTo(S, id) {
     if (!q.ch4.busk) return S.say(MORE.busk(c), () => { q.ch4.busk = true; S.persist(); S.refresh(); S.busk(); });
     return S.say(MORE.buskAgain);
   }
+  if (id === 'tui') {
+    const z = S.save.quests.zoo;
+    if (!z.met) return S.say(ZOO.meet(c), () => { z.met = true; S.persist(); S.refresh(); S.chime(); });
+    return S.say(ZOO.hint(c, S.zoo().missing(), S.zoo().carrying));
+  }
+  if (S.mapId === 'zoo' && LATER.zoo[id]) return S.say(LATER.zoo[id](c));
   if (S.mapId === 'harbour' && LATER.harbour[id]) return S.say(LATER.harbour[id](c));
   if (S.mapId === 'forestville' && q.ch2.done && LATER.home[id]) return S.say(LATER.home[id](c));
   const fn = FAMILY_TALK[id] || NPC_TALK[id];

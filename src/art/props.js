@@ -256,6 +256,9 @@ export function shop(kind, opts = {}) {
     surf: { name: 'MANLY SURF CO', sub: 'boards · hire', wall: '#e3eef0', awn: ['#e0782f', '#fff'], w: 220 },
   }[kind];
   if (opts.name) K.name = opts.name;
+  if (opts.sub != null) K.sub = opts.sub;
+  if (opts.wall) K.wall = opts.wall;
+  if (opts.awn) K.awn = opts.awn;
   const w = K.w, h = 110, W = w + 20, H = h + 40, x0 = 10, top = 8;
   const canvas = paint(W, H, ctx => {
     groundShadow(ctx, W / 2 + 8, top + h + 4, w * 0.55, 10, 0.22);
@@ -737,4 +740,48 @@ export function busker() {
     for (const [x, y] of [[18, 16], [24, 20], [28, 15], [40, 18]]) ellipse(ctx, x, y, 2.4, 2.4, '#e9c46a');
   });
   return { canvas, ax: 30, ay: 30, collide: null };
+}
+
+// ---------------- Taronga Zoo ----------------
+// Big entrance arch with the zoo name and a little giraffe on top.
+export function zooGate() {
+  const W = 340, H = 210;
+  const canvas = paint(W, H, ctx => {
+    groundShadow(ctx, 40, 202, 30, 7); groundShadow(ctx, W - 40, 202, 30, 7);
+    for (const x of [16, W - 64]) {
+      rrect(ctx, x, 70, 48, 132, 6, '#d9b98a');
+      ctx.fillStyle = 'rgba(120,85,45,.18)'; for (let y = 84; y < 200; y += 16) ctx.fillRect(x, y, 48, 2);
+      rrect(ctx, x - 4, 64, 56, 14, 4, '#bf9a66');
+      ellipse(ctx, x + 24, 56, 18, 12, '#5f8f4f'); ellipse(ctx, x + 14, 60, 10, 8, '#6f9f5a'); ellipse(ctx, x + 34, 60, 10, 8, '#4f7f43');
+    }
+    ctx.strokeStyle = '#2f6b47'; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(40, 80); ctx.quadraticCurveTo(W / 2, 10, W - 40, 80); ctx.stroke();
+    rrect(ctx, 54, 52, W - 108, 40, 10, '#2f6b47');
+    ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(58, 56, W - 116, 32, 8); ctx.stroke();
+    ctx.fillStyle = '#fbf3dc'; ctx.font = font(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('TARONGA ZOO', W / 2, 73);
+    // little giraffe silhouette on top of the sign
+    ctx.fillStyle = '#e8b65a'; ctx.strokeStyle = 'rgba(58,42,34,.85)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.ellipse(W / 2 - 6, 40, 14, 7, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W / 2 + 4, 36); ctx.lineTo(W / 2 + 12, 14); ctx.lineTo(W / 2 + 17, 15); ctx.lineTo(W / 2 + 11, 38); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(W / 2 + 17, 13, 6, 4, 0.2, 0, 7); ctx.fill(); ctx.stroke();
+    for (const x of [-16, -10, 0, 6]) { ctx.fillRect(W / 2 + x, 45, 3, 8); }
+    ctx.fillStyle = '#a8652e'; for (const [x, y] of [[-12, 39], [-3, 42], [4, 38]]) { ctx.beginPath(); ctx.arc(W / 2 + x, y, 2.2, 0, 7); ctx.fill(); }
+  });
+  return { canvas, ax: W / 2, ay: 202 };
+}
+
+// Round fountain with a little jet (a penguin chick likes it here).
+export function fountain() {
+  const canvas = paint(130, 110, ctx => {
+    groundShadow(ctx, 65, 92, 60, 12);
+    ellipse(ctx, 65, 80, 58, 22, '#cdb48a');
+    ellipse(ctx, 65, 78, 50, 17, '#5fa7c2');
+    ellipse(ctx, 58, 74, 22, 6, 'rgba(255,255,255,.35)');
+    rrect(ctx, 59, 46, 12, 32, 4, '#cdb48a');
+    ellipse(ctx, 65, 46, 18, 6, '#bf9a66'); ellipse(ctx, 65, 44, 14, 4, '#7fc0d6');
+    ctx.strokeStyle = 'rgba(220,245,255,.95)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(65, 42); ctx.quadraticCurveTo(65, 10, 65, 8); ctx.stroke();
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(65, 10); ctx.quadraticCurveTo(52, 8, 50, 40); ctx.moveTo(65, 10); ctx.quadraticCurveTo(78, 8, 80, 40); ctx.stroke();
+  });
+  return { canvas, ax: 65, ay: 80, collide: { c: 0, y: -2, rx: 52, ry: 18 } };
 }

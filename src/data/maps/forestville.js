@@ -239,6 +239,7 @@ export function buildProps() {
   add('signPost', 2990 + 60, 1110, 'FORESTVILLE VILLAGE', '#2f5f8f', 150);
   add('busStop', SPOTS.busStop[0], SPOTS.busStop[1] - 6, 'TO MANLY');
   add('signPost', 2840, 1222, 'KARTS · MOORE PARK', '#c2643d', 150);
+  add('busStop', 3120, 1226, 'TO THE ZOO');
   // parked cars
   const cc = ['#d8453b', '#2f6fa3', '#f2f0e8', '#3f7a54', '#e9a33c', '#6f54a8'];
   [1760, 1910, 2270, 2420, 2570, 2720].forEach((x, i) => add('car', x, 1304, cc[i % cc.length], i % 2 ? 1 : -1));

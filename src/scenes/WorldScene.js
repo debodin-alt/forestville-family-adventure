@@ -4,9 +4,11 @@ import * as PROPS from '../art/props.js';
 import { ART } from '../art/critters.js';
 import { makeCanvas } from '../utils/canvas.js';
 import { ART_VERSION, groundChunks, groundKeys, propArgs, propKey } from '../art/assets.js';
-import { forestville } from '../data/maps/forestville.js';
+import { forestville, SPOTS } from '../data/maps/forestville.js';
 import { manly, MSPOTS } from '../data/maps/manly.js';
 import { harbour, HSPOTS } from '../data/maps/harbour.js';
+import { zoo } from '../data/maps/zoo.js';
+import { ZooRescue } from '../systems/zoo.js';
 import { SEA_LIFE } from '../data/fish.js';
 import { Fishing } from '../systems/fishing.js';
 import { music } from '../systems/music.js';
@@ -21,11 +23,12 @@ import { readMove, takeAction, haptic, isTouch } from '../systems/input.js';
 import { writeSave } from '../systems/save.js';
 import { objective, buildInteractables, onEnterMap, onFeatherCollected, talkTo, onMove, onSpot, onCatch } from '../systems/quests.js';
 import { hud } from '../ui/hud.js';
+import { ZOO } from '../data/dialogue.js';
 import { state } from '../state.js';
-import { voice } from '../systems/voice.js';
 
-const MAPS = { forestville, manly, harbour };
-const THEME = { forestville: 'forestville', manly: 'manly', harbour: 'harbour' };
+const MAPS = { forestville, manly, harbour, zoo };
+const THEME = { forestville: 'forestville', manly: 'manly', harbour: 'harbour', zoo: 'zoo' };
+const PLACE = { forestville: 'Forestville', manly: 'Manly', harbour: 'Circular Quay', zoo: 'Taronga Zoo' };
 const TALL = new Set(['gum', 'roundTree', 'norfolkPine', 'house', 'shop', 'school', 'grassTree', 'lifeguardTower']);
 
 export class WorldScene extends Phaser.Scene {
@@ -36,6 +39,8 @@ export class WorldScene extends Phaser.Scene {
     this.mapId = data.map || this.save.player.map || 'forestville';
     this.arriving = !!data.arrive;
     this.arriveKind = data.arrive;
+    this.arrivedBy = data.via || null;
+    this.homeTeleport = !!data.home;
     this.busy = false;
   }
 
@@ -92,6 +97,7 @@ export class WorldScene extends Phaser.Scene {
     this.ambient = new Ambient(this, map);
     state.timings.critters = Math.round(t3 - t2); state.timings.ambient = Math.round(performance.now() - t3);
     this.fishing = new Fishing(this);
+    this.zoo = new ZooRescue(this);
     this.makeLampGlow();
     music.play(THEME[map.id]);
     this.pickups = {};
@@ -115,7 +121,8 @@ export class WorldScene extends Phaser.Scene {
     this.applyZoom();
     this.scale.on('resize', this.applyZoom, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.applyZoom, this));
-    cam.fadeIn(600, 255, 244, 220);
+    if (this.homeTeleport) { cam.fadeIn(500, 255, 255, 255); this.player.jump(); this.time.delayedCall(200, () => audio.sparkle()); }
+    else cam.fadeIn(600, 255, 244, 220);
 
     this.makeWaterFx();
     // characters are solid: you bump into family and neighbours instead of walking through them
@@ -179,7 +186,7 @@ export class WorldScene extends Phaser.Scene {
 
   startPosition(map, who) {
     const s = this.save.player;
-    const fallback = this.arriving ? ((this.arriveKind === 'kart' && map.kartStop) || map.arriveAt || map.spawn) : (map.family[who] || map.spawn);
+    const fallback = this.arriving ? ((this.arriveKind === 'kart' && map.kartStop) || (this.arrivedBy && map.arrivals?.[this.arrivedBy]) || map.arriveAt || map.spawn) : (map.family[who] || map.spawn);
     if (!this.arriving && s.map === map.id && Number.isFinite(s.x) && Number.isFinite(s.y)) {
       const c = new Collision(map.w, map.h, map.colliders(this.colOpts));
       if (!c.blocked(s.x, s.y)) return [s.x, s.y];
@@ -236,7 +243,9 @@ export class WorldScene extends Phaser.Scene {
       toast: t => hud.toast(t),
       showTitle: (a, b) => hud.showTitle(a, b),
       emphasize: (x, y) => scene.emphasize(x, y),
-      travel: id => scene.travel(id),
+      travel: (id, via) => scene.travel(id, via),
+      zoo: () => scene.zoo,
+      get arrivedBy() { return scene.arrivedBy; },
       karts: () => scene.travelKart(),
       animal: key => scene.ambient.animals[key],
       walkAnimal: (key, x, y) => scene.ambient.walkTo(key, x, y, 'swim'),
@@ -326,17 +335,42 @@ export class WorldScene extends Phaser.Scene {
     this.zoomTween = this.tweens.add({ targets: this, zoomBoost: k, duration: ms * 0.4, yoyo: true, hold: ms * 0.3, ease: 'Sine.easeInOut', onUpdate: () => this.cameras.main.setZoom(this.baseZoom * this.zoomBoost) });
   }
 
-  travel(mapId) {
+  travel(mapId, via) {
     if (this.busy) return;
     this.busy = true;
     audio.bus();
-    hud.toast(mapId === 'manly' ? 'Next stop: Manly' : 'Next stop: Forestville');
+    hud.toast(`Next stop: ${PLACE[mapId]}`);
     this.persist(true);
     this.cameras.main.fadeOut(700, 255, 244, 220);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.save.player.map = mapId; this.save.player.x = null; this.save.player.y = null;
       writeSave(this.save);
-      this.scene.restart({ map: mapId, arrive: true });
+      this.scene.restart({ map: mapId, arrive: true, via });
+    });
+  }
+
+  // Teleport straight back to the family's front yard from anywhere.
+  goHome() {
+    if (this.busy || hud.talking || hud.menuOpen || hud.albumOpen || hud.endingOpen || this.fishing.busy) return;
+    this.busy = true;
+    const p = this.player;
+    audio.teleport(); haptic.success();
+    p.jump();
+    for (let i = 0; i < 14; i++) {
+      const m = this.add.image(p.x + (Math.random() - 0.5) * 50, p.y - 10 - Math.random() * 60, 'mote').setScale(3).setDepth(9.7e5).setBlendMode('ADD');
+      this.tweens.add({ targets: m, y: m.y - 80 - Math.random() * 60, alpha: 0, scale: 0.6, duration: 700, delay: i * 25, onComplete: () => m.destroy() });
+    }
+    this.tweens.add({ targets: p, extraY: -60, duration: 500, delay: 120, ease: 'Quad.easeIn' });
+    this.tweens.add({ targets: p.sprite, alpha: 0, duration: 420, delay: 200 });
+    hud.toast('Zooooom! Home time');
+    this.time.delayedCall(450, () => {
+      this.cameras.main.fadeOut(450, 255, 255, 255);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        const [hx, hy] = SPOTS.start;
+        Object.assign(this.save.player, { map: 'forestville', x: hx, y: hy, who: p.id });
+        writeSave(this.save);
+        this.scene.restart({ map: 'forestville', home: true });
+      });
     });
   }
 
@@ -397,6 +431,35 @@ export class WorldScene extends Phaser.Scene {
         text: 'Feathers found, a duck at the beach, a groper friend, a busking debut and a fish off the wharf. Same time next weekend?',
         button: 'Keep exploring',
         onButton: () => { this.busy = false; },
+      });
+    });
+  }
+
+  // All five zoo babies home: family photo with the giraffes, then the ending card.
+  zooDone() {
+    const q = this.save.quests.zoo;
+    if (q.done) return;
+    q.done = true; this.persist(true); this.refresh();
+    audio.quest(); haptic.success();
+    hud.say(ZOO.done, () => {
+      this.busy = true;
+      const [gx, gy] = zoo.pens.giraffe.gate;
+      const sx = gx - 40, sy = gy + 40;
+      hud.flash(); audio.camera();
+      const spots = { dan: [sx - 70, sy], finn: [sx - 25, sy + 12], jessia: [sx + 25, sy + 12], jarency: [sx + 70, sy] };
+      this.player.setPosition(...spots[this.player.id]); this.player.dir = 'down';
+      for (const [id, c] of Object.entries(this.family)) { c.setPosition(...spots[id]); c.home = { x: c.x, y: c.y }; c.dir = 'down'; c.jump(); }
+      this.player.jump();
+      this.camTarget.x = sx; this.camTarget.y = sy - 120;
+      this.time.delayedCall(350, () => this.capture('Honorary Keepers · Taronga Zoo'));
+      this.time.delayedCall(900, () => {
+        hud.showEnding({
+          eyebrow: 'Zoo Rescue complete',
+          title: 'Honorary Keepers',
+          text: 'A koala, a joey, a penguin, a meerkat and a very wobbly giraffe, all safe and home. Tui says you can come back any time.',
+          button: 'Keep exploring',
+          onButton: () => { this.busy = false; },
+        });
       });
     });
   }
@@ -492,7 +555,7 @@ export class WorldScene extends Phaser.Scene {
     audio.setZone(a.amb);
     const seen = this.save.world.areasSeen;
     if (!a.quiet || first) {
-      hud.showTitle(a.name, first && this.mapId === 'manly' ? 'Manly · Northern Beaches' : first ? 'Forestville · Northern Beaches' : '');
+      hud.showTitle(a.name, first ? (this.map.subtitle || (this.mapId === 'manly' ? 'Manly · Northern Beaches' : 'Forestville · Northern Beaches')) : '');
       if (!seen.includes(`${this.mapId}:${a.id}`)) { seen.push(`${this.mapId}:${a.id}`); if (!first) this.zoomPulse(1.04, 900); }
     }
   }
@@ -613,7 +676,9 @@ export class WorldScene extends Phaser.Scene {
       else { p.faceToward(near.x, near.y); near.run(); }
     }
 
+    this.zoo.update(dt);
     this.ambient.update(dt, time, p, this.cameras.main);
+    this.zoo.late();
     this.maybeSixSeven(locked);
 
     if (this.moved && time - this.lastSave > 5000) { this.moved = false; this.persist(); }
@@ -628,8 +693,7 @@ export class WorldScene extends Phaser.Scene {
       this.sixAt = 0; j.idleMs = 0;
       j.sixSeven(5500);
       this.bubble('6-seeeeeeeeveeeeeeeeeennnnnnnn!', j, '#6f54a8');
-      // a short, snappy "six" then a long, stretched "seven"
-      this.time.delayedCall(120, () => voice.sayParts('jessia', [{ text: 'Six!', rate: 1.25 }, { text: 'seven', rate: 0.105, pitch: 1.03 }]));
+      this.time.delayedCall(120, () => audio.sixSeven());
     }
   }
 

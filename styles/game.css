@@ -135,6 +135,7 @@ h2 { font-size: clamp(30px, 8vw, 44px); }
 }
 .round-button svg { width: 22px; height: 22px; }
 .round-button:active { transform: scale(.9); }
+.home-button { background: #c2643d; color: #fff; }
 #mute-button .cross { display: none; }
 #mute-button.muted .cross { display: block; }
 #mute-button.muted .wave { display: none; }
@@ -195,7 +196,7 @@ h2 { font-size: clamp(30px, 8vw, 44px); }
   .prompt.show { transform: translateY(0); }
 }
 @media (hover: hover) and (pointer: fine) {
-  .joy-zone, .action-button { display: none; }
+  .joy-zone, .action-button, .kart-pad { display: none; }
 }
 
 /* ---------- dialogue ---------- */
@@ -260,6 +261,16 @@ h2 { font-size: clamp(30px, 8vw, 44px); }
 
 /* ---------- karting ---------- */
 #app.karting #top-hud, #app.karting .prompt, #app.karting .action-button, #app.karting #light { display: none; }
+#app.karting .joy-zone { display: none; }
+.kart-pad { position: absolute; z-index: 9; left: calc(14px + var(--safe-left)); right: calc(14px + var(--safe-right)); bottom: calc(16px + var(--safe-bottom)); display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
+.kart-steer, .kart-pedals { display: flex; gap: 14px; align-items: flex-end; }
+.kart-btn { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; width: 84px; height: 84px; border-radius: 22px; border: 3px solid rgba(255, 255, 255, .7); background: rgba(20, 22, 27, .7); color: #fff; font: 900 16px/1 ui-rounded, system-ui, sans-serif; letter-spacing: .04em; display: grid; place-items: center; box-shadow: 0 5px 0 rgba(0, 0, 0, .35); transition: transform .06s, background .06s; }
+.kart-btn svg { width: 46px; height: 46px; }
+.kart-btn.gas { width: 96px; height: 120px; background: #2fa866; border-color: #bff2d3; font-size: 22px; }
+.kart-btn.brake { width: 84px; height: 84px; background: #c23d33; border-color: #f5c3bd; font-size: 14px; }
+.kart-btn.on { transform: translateY(4px) scale(.95); box-shadow: 0 1px 0 rgba(0, 0, 0, .35); filter: brightness(1.2); }
+@media (max-width: 420px) { .kart-steer, .kart-pedals { gap: 10px; } .kart-btn { width: 74px; height: 74px; } .kart-btn.gas { width: 86px; height: 110px; } .kart-btn.brake { width: 74px; height: 74px; } }
+@media (max-height: 430px) { .kart-btn { width: 70px; height: 70px; } .kart-btn.gas { width: 84px; height: 96px; } .kart-btn.brake { width: 70px; height: 70px; } }
 #app.karting #tint { background-color: #fff !important; }
 .kart-hud { position: absolute; z-index: 9; top: calc(10px + var(--safe-top)); left: calc(10px + var(--safe-left)); right: calc(10px + var(--safe-right)); display: flex; align-items: flex-start; gap: 10px; pointer-events: none; }
 .kart-pos { font-weight: 900; font-size: clamp(44px, 12vw, 64px); line-height: .9; color: #fff; text-shadow: 0 3px 0 #c2643d, 0 6px 16px rgba(0, 0, 0, .35); }
