@@ -6,7 +6,7 @@ import { FAMILY, CHARACTERS } from '../data/characters.js';
 import { paintPortrait } from '../art/critters.js';
 import { audio } from '../systems/audio.js';
 import { music } from '../systems/music.js';
-import { input, takeAction, haptic, isTouch } from '../systems/input.js';
+import { input, readMove, takeAction, haptic, isTouch } from '../systems/input.js';
 import { writeSave } from '../systems/save.js';
 import { snapshot, addPhoto } from '../systems/photos.js';
 import { hud } from '../ui/hud.js';
@@ -53,20 +53,23 @@ export class KartScene extends Phaser.Scene {
     // camera: overhead or driver's seat (remembered between races)
     this.fpv = new KartFPV(this, this.textures.get('kart-track').getSourceImage(), COLORS);
     this.setView(state.kartView || 'top');
-    $('kart-cam').onclick = () => { audio.tap(); this.setView(this.view === 'top' ? 'driver' : 'top'); };
+    $('kart-cam').onclick = () => { audio.tap(); this.setView(this.view === 'top' ? 'driver' : 'top', true); };
     this.onKeyWas = input.onKey;
-    input.onKey = k => { if (k === 'v' || k === 'c') this.setView(this.view === 'top' ? 'driver' : 'top'); };
+    input.onKey = k => { if (k === 'v' || k === 'c') this.setView(this.view === 'top' ? 'driver' : 'top', true); };
     music.play('race');
     this.events.once('shutdown', () => this.cleanup());
     hud.showTitle('LEVEL 5 KARTING', 'Moore Park · 3 laps');
-    this.time.delayedCall(3200, () => hud.toast(isTouch() ? 'Hold GO to drive · ◀ ▶ to steer' : 'Up to go · Left/Right to steer · Down to brake', 3200));
+    this.time.delayedCall(3200, () => hud.toast(isTouch() ? (this.view === 'driver' ? 'Hold GO to drive · ◀ ▶ to steer' : 'Point the joystick where you want to go') : 'Up to go · Left/Right to steer · Down to brake', 3200));
   }
 
-  setView(v) {
+  setView(v, tell = false) {
     this.view = v; state.kartView = v;
     this.fpv.show(v === 'driver');
     this.cameras.main.setVisible(v !== 'driver');   // skip drawing the overhead view when hidden
     $('kart-cam-label').textContent = v === 'driver' ? 'Driver' : 'Overhead';
+    document.getElementById('app').classList.toggle('kart-driver', v === 'driver');
+    Object.keys(input.kart).forEach(k => { input.kart[k] = false; });
+    if (tell && isTouch()) hud.toast(v === 'driver' ? 'Driver view: hold GO · ◀ ▶ to steer' : 'Overhead: point the joystick where you want to go', 2400);
   }
 
   applyZoom() {
@@ -141,7 +144,7 @@ export class KartScene extends Phaser.Scene {
     input.onKey = this.onKeyWas;
     if (this.motor) { try { this.motor.o.stop(); this.motor.o2.stop(); } catch { /* ok */ } this.motor.g.disconnect(); this.motor = null; }
     this.scale.off('resize', this.applyZoom, this);
-    document.getElementById('app').classList.remove('karting');
+    document.getElementById('app').classList.remove('karting', 'kart-driver');
     $('kart-hud').hidden = true; $('kart-pad').hidden = true; $('kart-lights').hidden = true; $('kart-results').hidden = true;
   }
 
@@ -189,8 +192,13 @@ export class KartScene extends Phaser.Scene {
     const keys = input.keys, pad = input.kart;
     const right = keys.has('arrowright') || keys.has('d') || pad.right, left = keys.has('arrowleft') || keys.has('a') || pad.left;
     const gas = keys.has('arrowup') || keys.has('w') || pad.gas, brake = keys.has('arrowdown') || keys.has('s') || pad.brake;
-    // steering is always "your" left/right (like sitting in the kart), in both camera views
-    return { steer: (right ? 1 : 0) - (left ? 1 : 0), gas: gas ? 1 : 0, brake };
+    if (right || left || gas || brake) return { steer: (right ? 1 : 0) - (left ? 1 : 0), gas: gas ? 1 : 0, brake };
+    if (this.view === 'driver') return { steer: 0, gas: 0, brake: false };
+    // overhead view: point the joystick where you want to go and the kart steers toward it
+    const [jx, jy] = readMove(), mag = Math.hypot(jx, jy);
+    if (mag < 0.15) return { steer: 0, gas: 0, brake: false };
+    let d = Math.atan2(jy, jx) - k.a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    return { steer: Math.max(-1, Math.min(1, d * 2.4)), gas: Math.abs(d) > 2.3 ? 0 : mag, brake: Math.abs(d) > 2.3 && k.v > 60 };
   }
 
   aiInput(k) {

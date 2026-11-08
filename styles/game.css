@@ -261,7 +261,9 @@ h2 { font-size: clamp(30px, 8vw, 44px); }
 
 /* ---------- karting ---------- */
 #app.karting #top-hud, #app.karting .prompt, #app.karting .action-button, #app.karting #light { display: none; }
-#app.karting .joy-zone { display: none; }
+/* overhead view: joystick. driver view: steer buttons + pedals */
+#app.karting.kart-driver .joy-zone { display: none; }
+#app.karting:not(.kart-driver) .kart-pad { display: none; }
 .kart-pad { position: absolute; z-index: 9; left: calc(14px + var(--safe-left)); right: calc(14px + var(--safe-right)); bottom: calc(16px + var(--safe-bottom)); display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
 .kart-steer, .kart-pedals { display: flex; gap: 14px; align-items: flex-end; }
 .kart-btn { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; width: 84px; height: 84px; border-radius: 22px; border: 3px solid rgba(255, 255, 255, .7); background: rgba(20, 22, 27, .7); color: #fff; font: 900 16px/1 ui-rounded, system-ui, sans-serif; letter-spacing: .04em; display: grid; place-items: center; box-shadow: 0 5px 0 rgba(0, 0, 0, .35); transition: transform .06s, background .06s; }
